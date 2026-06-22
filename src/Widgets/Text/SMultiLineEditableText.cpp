@@ -14,7 +14,7 @@ void SMultiLineEditableText::SetText(const std::string& InText)
     
     // Clamp cursor to end of text
     CursorLocation.LineIndex = GetNumLines() > 0 ? GetNumLines() - 1 : 0;
-    CursorLocation.CharIndex = static_cast<int32>(Lines[CursorLocation.LineIndex].Text.length());
+    CursorLocation.CharIndex = static_cast<int32_t>(Lines[CursorLocation.LineIndex].Text.length());
     
     if (OnTextChanged)
         OnTextChanged(TextContent);
@@ -72,7 +72,7 @@ void SMultiLineEditableText::SetSelection(const FTextLocation& Start, const FTex
 void SMultiLineEditableText::SelectAll()
 {
     Selection.Start = FTextLocation(0, 0);
-    Selection.End = FTextLocation(GetNumLines() - 1, static_cast<int32>(GetLineInfo(GetNumLines() - 1).Text.length()));
+    Selection.End = FTextLocation(GetNumLines() - 1, static_cast<int32_t>(GetLineInfo(GetNumLines() - 1).Text.length()));
     Selection.Normalize();
 }
 
@@ -85,9 +85,9 @@ void SMultiLineEditableText::SetCursorLocation(const FTextLocation& Location)
     {
         CursorLocation.LineIndex = GetNumLines() - 1;
     }
-    if (CursorLocation.CharIndex > static_cast<int32>(GetLineInfo(CursorLocation.LineIndex).Text.length()))
+    if (CursorLocation.CharIndex > static_cast<int32_t>(GetLineInfo(CursorLocation.LineIndex).Text.length()))
     {
-        CursorLocation.CharIndex = static_cast<int32>(GetLineInfo(CursorLocation.LineIndex).Text.length());
+        CursorLocation.CharIndex = static_cast<int32_t>(GetLineInfo(CursorLocation.LineIndex).Text.length());
     }
 }
 
@@ -160,7 +160,7 @@ void SMultiLineEditableText::InsertTextAtCursor(const std::string& InText)
     
     // Update cursor position
     CursorLocation.LineIndex = InsertLine;
-    CursorLocation.CharIndex = static_cast<int32>(NewLineInfos[0].Text.length());
+    CursorLocation.CharIndex = static_cast<int32_t>(NewLineInfos[0].Text.length());
     
     // Update text content
     TextContent = JoinLines(Lines);
@@ -321,11 +321,11 @@ void SMultiLineEditableText::MoveCursorEnd(bool bCtrl)
     if (bCtrl)
     {
         CursorLocation.LineIndex = GetNumLines() - 1;
-        CursorLocation.CharIndex = static_cast<int32>(GetLineInfo(GetNumLines() - 1).Text.length());
+        CursorLocation.CharIndex = static_cast<int32_t>(GetLineInfo(GetNumLines() - 1).Text.length());
     }
     else
     {
-        CursorLocation.CharIndex = static_cast<int32>(GetLineInfo(CursorLocation.LineIndex).Text.length());
+        CursorLocation.CharIndex = static_cast<int32_t>(GetLineInfo(CursorLocation.LineIndex).Text.length());
     }
 }
 
@@ -349,7 +349,7 @@ void SMultiLineEditableText::MoveCursorLeft(bool bShift, bool bCtrl)
     else if (CursorLocation.LineIndex > 0)
     {
         CursorLocation.LineIndex--;
-        CursorLocation.CharIndex = static_cast<int32>(GetLineInfo(CursorLocation.LineIndex).Text.length());
+        CursorLocation.CharIndex = static_cast<int32_t>(GetLineInfo(CursorLocation.LineIndex).Text.length());
     }
     
     if (SlateInputRouter::IsShiftDown())
@@ -363,7 +363,7 @@ void SMultiLineEditableText::MoveCursorRight(bool bShift, bool bCtrl)
     if (bCtrl)
     {
         // Move to end of line
-        CursorLocation.CharIndex = static_cast<int32>(GetLineInfo(CursorLocation.LineIndex).Text.length());
+        CursorLocation.CharIndex = static_cast<int32_t>(GetLineInfo(CursorLocation.LineIndex).Text.length());
         if (SlateInputRouter::IsShiftDown())
             Selection.End = CursorLocation;
         else
@@ -371,7 +371,7 @@ void SMultiLineEditableText::MoveCursorRight(bool bShift, bool bCtrl)
         return;
     }
     
-    if (CursorLocation.CharIndex < static_cast<int32>(GetLineInfo(CursorLocation.LineIndex).Text.length()))
+    if (CursorLocation.CharIndex < static_cast<int32_t>(GetLineInfo(CursorLocation.LineIndex).Text.length()))
     {
         CursorLocation.CharIndex++;
     }
@@ -934,7 +934,7 @@ FReply SMultiLineEditableText::OnKeyDown(EKey key)
             {
                 // Delete newline and join with previous line
                 CursorLocation.LineIndex--;
-                CursorLocation.CharIndex = static_cast<int32>(GetLineInfo(CursorLocation.LineIndex).Text.length());
+                CursorLocation.CharIndex = static_cast<int32_t>(GetLineInfo(CursorLocation.LineIndex).Text.length());
                 DeleteRange(CursorLocation, CursorLocation + FTextLocation(1, 0));
             }
             return FReply::Handled();
