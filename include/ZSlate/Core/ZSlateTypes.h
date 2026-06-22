@@ -4,6 +4,7 @@
 // This file defines the core math and type primitives ZSlate depends on,
 // decoupled from any specific engine's math library.
 
+#include <algorithm>
 #include <cmath>
 #include <cstring>
 #include <cstdint>
