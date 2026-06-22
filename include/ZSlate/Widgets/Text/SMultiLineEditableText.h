@@ -167,8 +167,8 @@ public:
 
 private:
     // Text utilities
-    std::vector<std::string> SplitIntoLines(const std::string& Text) const;
-    std::string JoinLines(const std::vector<std::string>& Lines) const;
+    std::vector<FTextLineInfo> SplitIntoLines(const std::string& Text) const;
+    std::string JoinLines(const std::vector<FTextLineInfo>& Lines) const;
     
     // UTF-8 utilities
     size_t GetPrevCharStart(size_t pos) const;

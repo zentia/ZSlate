@@ -20,16 +20,16 @@ void SMultiLineEditableText::SetText(const std::string& InText)
         OnTextChanged(TextContent);
 }
 
-const std::vector<std::string> SMultiLineEditableText::SplitIntoLines(const std::string& Text) const
+const std::vector<FTextLineInfo> SMultiLineEditableText::SplitIntoLines(const std::string& Text) const
 {
-    std::vector<std::string> Result;
+    std::vector<FTextLineInfo> Result;
     std::string CurrentLine;
     
     for (char c : Text)
     {
         if (c == '\n')
         {
-            Result.push_back(std::move(CurrentLine));
+            Result.push_back(FTextLineInfo(std::move(CurrentLine)));
             CurrentLine.clear();
         }
         else if (c == '\r')
@@ -45,19 +45,19 @@ const std::vector<std::string> SMultiLineEditableText::SplitIntoLines(const std:
     // Don't forget the last line
     if (!CurrentLine.empty() || Result.empty())
     {
-        Result.push_back(std::move(CurrentLine));
+        Result.push_back(FTextLineInfo(std::move(CurrentLine)));
     }
     
     return Result;
 }
 
-std::string SMultiLineEditableText::JoinLines(const std::vector<std::string>& Lines) const
+std::string SMultiLineEditableText::JoinLines(const std::vector<FTextLineInfo>& Lines) const
 {
     std::string Result;
     for (size_t i = 0; i < Lines.size(); ++i)
     {
         if (i > 0) Result += '\n';
-        Result += Lines[i];
+        Result += Lines[i].Text;
     }
     return Result;
 }
