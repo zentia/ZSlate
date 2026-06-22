@@ -1,0 +1,73 @@
+#include "ZSlate/Application/SlateApplication.h"
+
+namespace ZSlate
+{
+// Definition of the process-wide text measurer declared in SlatePaint.h.
+ISlateTextMeasurer* GSlateTextMeasurer = nullptr;
+
+// Definition of clipboard callbacks declared in SlatePaint.h.
+SlateGetClipboardFunc GSlateGetClipboard = nullptr;
+SlateSetClipboardFunc GSlateSetClipboard = nullptr;
+void* GSlateClipboardUserData = nullptr;
+
+// Global platform instance
+ISlatePlatform* GPlatform = nullptr;
+
+void SetPlatform(ISlatePlatform* platform)
+{
+    GPlatform = platform;
+}
+
+ISlatePlatform* GetPlatform()
+{
+    return GPlatform;
+}
+
+SlateApplication& SlateApplication::Get()
+{
+    static SlateApplication instance;
+    return instance;
+}
+
+void SlateApplication::SetTextMeasurer(ISlateTextMeasurer* measurer)
+{
+    GSlateTextMeasurer = measurer;
+}
+
+void SlateApplication::SetClipboardCallbacks(SlateGetClipboardFunc getFunc,
+                                             SlateSetClipboardFunc setFunc,
+                                             void* userdata)
+{
+    GSlateGetClipboard = getFunc;
+    GSlateSetClipboard = setFunc;
+    GSlateClipboardUserData = userdata;
+}
+
+void SlateApplication::Tick(float delta_seconds)
+{
+    if (m_Root)
+    {
+        // Widgets that animate override Tick(); the root drives itself for now.
+        m_Root->Tick(FGeometry(), delta_seconds);
+    }
+}
+
+void SlateApplication::PaintInto(ISlateRenderer* renderer, const UIRect& region)
+{
+    if (m_Root == nullptr || renderer == nullptr)
+        return;
+
+    // 1. Bottom-up desired-size cache.
+    m_Root->CacheDesiredSize();
+
+    // 2. Top-down arrange + paint, clipped to the host region.
+    const FGeometry root_geometry(Vector2(region.x, region.y), Vector2(region.width, region.height));
+    FPaintContext ctx;
+    ctx.Renderer = renderer;
+    ctx.LayerId = 0;
+
+    renderer->pushClipRect(region);
+    m_Root->Paint(ctx, root_geometry);
+    renderer->popClipRect();
+}
+}  // namespace ZSlate
