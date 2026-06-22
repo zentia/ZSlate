@@ -216,8 +216,6 @@ private:
     void DrawScrollBar(const FPaintContext& ctx, const FGeometry& geom) const;
     
     // Scrollbar
-    float GetScrollBarThumbPosition() const;
-    float GetScrollBarThumbSize() const;
     void ApplyThumbDrag(float PointerY, const UIRect& Rect);
 
 private:
