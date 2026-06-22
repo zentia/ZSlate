@@ -170,6 +170,12 @@ private:
     std::vector<FTextLineInfo> SplitIntoLines(const std::string& Text) const;
     std::string JoinLines(const std::vector<FTextLineInfo>& Lines) const;
     
+    // Layout calculations
+    void ClampScrollOffset();
+    float GetMaxScrollOffset() const;
+    float GetScrollBarThumbSize() const;
+    float GetScrollBarThumbPosition() const;
+    
     // UTF-8 utilities
     size_t GetPrevCharStart(size_t pos) const;
     size_t GetNextCharStart(size_t pos) const;

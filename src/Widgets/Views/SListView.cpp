@@ -34,7 +34,7 @@ void SListView<ItemType>::ArrangeChildren(const FGeometry& allotted, std::vector
         
         FArrangedWidget Arranged;
         Arranged.Widget = VisibleItem.Widget;
-        Arranged.Geometry = FGeometry(UIRect(X, Y, Rect.w - Options.Padding.Left - Options.Padding.Right, ItemHeight), allotted);
+        Arranged.Geometry = FGeometry(Vector2(X, Y), Vector2(Rect.w - Options.Padding.Left - Options.Padding.Right, ItemHeight));
         
         out.push_back(Arranged);
         Y += ItemHeight;
