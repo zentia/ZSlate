@@ -20,7 +20,7 @@ Vector2 SListView<ItemType>::ComputeDesiredSize() const
 template<typename ItemType>
 void SListView<ItemType>::ArrangeChildren(const FGeometry& allotted, std::vector<FArrangedWidget>& out) const
 {
-    UpdateVisibleItems();
+    const_cast<SListView<ItemType>*>(this)->UpdateVisibleItems();
     
     const UIRect Rect = allotted.ToRect();
     float X = Rect.x + Options.Padding.Left;
