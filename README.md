@@ -18,7 +18,7 @@ ZSlate/
 ├── Application/   # SlateApplication, input routing
 ├── Backend/       # ISlateRenderer interface
 ├── Widgets/
-│   ├── Text/      # STextBlock, SMultiLineEditableText
+│   ├── Text/      # STextBlock, SRichTextBlock, SMultiLineEditableText
 │   ├── Input/     # SButton, SCheckBox, SSlider, SEditableTextBox
 │   ├── Layout/    # SBoxPanel, SScrollBox, SSplitter, SSpacer
 │   ├── Views/     # SListView
@@ -94,6 +94,7 @@ target_link_libraries(MyApp PRIVATE ZSlate)
 | Widget | Description |
 |--------|-------------|
 | `STextBlock` | Single line text display |
+| `SRichTextBlock` | **Rich text display** with inline formatting (bold, color, links, etc.) |
 | `SMultiLineEditableText` | **Multi-line text editor** with selection, clipboard, scroll |
 
 ### Input Widgets (`Widgets/Input/`)
@@ -186,6 +187,38 @@ auto ListView = ZSlate::CreateListView<FMyItem>(
     ZSlate::SListView<FMyItem>::FListViewOptions{.ItemHeight = 24.0f}
 );
 ```
+
+### SRichTextBlock Example
+
+```cpp
+#include "ZSlate/Widgets/Text/SRichTextBlock.h"
+
+auto RichText = ZSlate::CreateRichTextBlock(
+    "This is <b>bold</b>, <i>italic</i>, <u>underline</u>, "
+    "and <color=#FF0000>red text</color>.\n"
+    "Visit <Hyperlink url=\"https://example.com\">our website</Hyperlink>.",
+    ZSlate::SRichTextBlock::FRichTextOptions{
+        .FontSize = 14.0f,
+        .Color = ZSlate::Colors::White,
+        .AutoWrapText = true
+    }
+);
+
+// Handle hyperlink clicks
+RichText->SetOnHyperlinkNavigate([](const std::string& Url) {
+    std::cout << "Navigating to: " << Url << std::endl;
+});
+```
+
+**Supported Tags:**
+- `<b>`, `<strong>` - Bold text
+- `<i>`, `<em>` - Italic text
+- `<u>` - Underline
+- `<s>`, `<strike>` - Strikethrough
+- `<color=#RRGGBB>` - Text color
+- `<size=N>` - Font size
+- `<Hyperlink url="...">text</>` - Clickable link
+- `<br>` - Line break
 
 ## Type Reference
 
