@@ -104,7 +104,7 @@ void SMultiLineEditableText::ScrollToCursor()
     ClampScrollOffset();
 }
 
-void SMultiLineEditableText::ScrollToLine(int32 LineIndex)
+void SMultiLineEditableText::ScrollToLine(int32_t LineIndex)
 {
     if (LineIndex < 0 || LineIndex >= GetNumLines()) return;
     
@@ -125,8 +125,8 @@ void SMultiLineEditableText::InsertTextAtCursor(const std::string& InText)
     std::vector<std::string> NewLines = SplitIntoLines(InText);
     
     // Insert at cursor position
-    int32 InsertLine = CursorLocation.LineIndex;
-    int32 InsertChar = CursorLocation.CharIndex;
+    int32_t InsertLine = CursorLocation.LineIndex;
+    int32_t InsertChar = CursorLocation.CharIndex;
     
     // Get text before and after cursor
     std::string LineText = GetLineInfo(InsertLine).Text;
@@ -238,12 +238,12 @@ std::string SMultiLineEditableText::GetSelectedText() const
         std::swap(Start, End);
     }
     
-    for (int32 Line = Start.LineIndex; Line <= End.LineIndex; ++Line)
+    for (int32_t Line = Start.LineIndex; Line <= End.LineIndex; ++Line)
     {
         const std::string& LineText = GetLineInfo(Line).Text;
         
-        int32 LineStart = (Line == Start.LineIndex) ? Start.CharIndex : 0;
-        int32 LineEnd = (Line == End.LineIndex) ? End.CharIndex : static_cast<int32>(LineText.length());
+        int32_t LineStart = (Line == Start.LineIndex) ? Start.CharIndex : 0;
+        int32_t LineEnd = (Line == End.LineIndex) ? End.CharIndex : static_cast<int32_t>(LineText.length());
         
         if (Line == Start.LineIndex && Line == End.LineIndex)
         {
@@ -394,7 +394,7 @@ void SMultiLineEditableText::MoveCursorUp(bool bShift)
         CursorLocation.LineIndex--;
         
         // Try to keep same column position
-        int32 NewLineLen = static_cast<int32>(GetLineInfo(CursorLocation.LineIndex).Text.length());
+        int32_t NewLineLen = static_cast<int32_t>(GetLineInfo(CursorLocation.LineIndex).Text.length());
         if (CursorLocation.CharIndex > NewLineLen)
         {
             CursorLocation.CharIndex = NewLineLen;
@@ -414,7 +414,7 @@ void SMultiLineEditableText::MoveCursorDown(bool bShift)
         CursorLocation.LineIndex++;
         
         // Try to keep same column position
-        int32 NewLineLen = static_cast<int32>(GetLineInfo(CursorLocation.LineIndex).Text.length());
+        int32_t NewLineLen = static_cast<int32_t>(GetLineInfo(CursorLocation.LineIndex).Text.length());
         if (CursorLocation.CharIndex > NewLineLen)
         {
             CursorLocation.CharIndex = NewLineLen;
@@ -431,30 +431,30 @@ void SMultiLineEditableText::MoveCursorDown(bool bShift)
 // Layout and Drawing
 // ============================================================================
 
-const FTextLineInfo& SMultiLineEditableText::GetLineInfo(int32 LineIndex) const
+const FTextLineInfo& SMultiLineEditableText::GetLineInfo(int32_t LineIndex) const
 {
     static FTextLineInfo EmptyLine("");
-    if (LineIndex < 0 || LineIndex >= static_cast<int32>(Lines.size()))
+    if (LineIndex < 0 || LineIndex >= static_cast<int32_t>(Lines.size()))
         return EmptyLine;
     return Lines[static_cast<size_t>(LineIndex)];
 }
 
-float SMultiLineEditableText::GetLineHeight(int32 LineIndex) const
+float SMultiLineEditableText::GetLineHeight(int32_t LineIndex) const
 {
     return Options.FontSize * Options.LineSpacing;
 }
 
-float SMultiLineEditableText::GetLineTopY(int32 LineIndex) const
+float SMultiLineEditableText::GetLineTopY(int32_t LineIndex) const
 {
     float Y = 0.0f;
-    for (int32 i = 0; i < LineIndex; ++i)
+    for (int32_t i = 0; i < LineIndex; ++i)
     {
         Y += GetLineHeight(i);
     }
     return Y;
 }
 
-float SMultiLineEditableText::GetLineBottomY(int32 LineIndex) const
+float SMultiLineEditableText::GetLineBottomY(int32_t LineIndex) const
 {
     return GetLineTopY(LineIndex) + GetLineHeight(LineIndex);
 }
@@ -462,7 +462,7 @@ float SMultiLineEditableText::GetLineBottomY(int32 LineIndex) const
 float SMultiLineEditableText::GetContentHeight() const
 {
     float Height = 0.0f;
-    for (int32 i = 0; i < GetNumLines(); ++i)
+    for (int32_t i = 0; i < GetNumLines(); ++i)
     {
         Height += GetLineHeight(i);
     }
@@ -473,7 +473,7 @@ FTextLocation SMultiLineEditableText::HitTestLocation(const Vector2& LocalPos) c
 {
     float ViewTop = ScrollOffsetY;
     
-    for (int32 Line = 0; Line < GetNumLines(); ++Line)
+    for (int32_t Line = 0; Line < GetNumLines(); ++Line)
     {
         float LineTop = GetLineTopY(Line);
         float LineBottom = GetLineBottomY(Line);
@@ -483,7 +483,7 @@ FTextLocation SMultiLineEditableText::HitTestLocation(const Vector2& LocalPos) c
             // Found the line, now find the character
             const std::string& LineText = GetLineInfo(Line).Text;
             
-            int32 CharIndex = 0;
+            int32_t CharIndex = 0;
             float X = 0.0f;
             
             for (size_t i = 0; i < LineText.length(); ++i)
@@ -506,9 +506,9 @@ FTextLocation SMultiLineEditableText::HitTestLocation(const Vector2& LocalPos) c
                 {
                     // Determine if closer to left or right edge
                     if (LocalPos.x < X + CharWidth * 0.5f)
-                        CharIndex = static_cast<int32>(i / CharLen);  // UTF-8 safe: count full chars
+                        CharIndex = static_cast<int32_t>(i / CharLen);  // UTF-8 safe: count full chars
                     else
-                        CharIndex = static_cast<int32>(i / CharLen) + 1;
+                        CharIndex = static_cast<int32_t>(i / CharLen) + 1;
                     break;
                 }
                 
@@ -523,7 +523,7 @@ FTextLocation SMultiLineEditableText::HitTestLocation(const Vector2& LocalPos) c
     // If past last line, return end of last line
     if (GetNumLines() > 0)
     {
-        int32 LastLineLen = static_cast<int32>(GetLineInfo(GetNumLines() - 1).Text.length());
+        int32_t LastLineLen = static_cast<int32_t>(GetLineInfo(GetNumLines() - 1).Text.length());
         return FTextLocation(GetNumLines() - 1, LastLineLen);
     }
     
@@ -590,7 +590,7 @@ void SMultiLineEditableText::DrawSelection(const FPaintContext& ctx, const FGeom
     const float ViewTop = ScrollOffsetY;
     const float ViewBottom = ViewTop + Rect.height;
     
-    for (int32 Line = Start.LineIndex; Line <= End.LineIndex; ++Line)
+    for (int32_t Line = Start.LineIndex; Line <= End.LineIndex; ++Line)
     {
         float LineTop = GetLineTopY(Line);
         float LineBottom = GetLineBottomY(Line);
@@ -658,7 +658,7 @@ void SMultiLineEditableText::DrawText(const FPaintContext& ctx, const FGeometry&
     const float ViewTop = ScrollOffsetY;
     const float ViewBottom = ViewTop + Rect.height;
     
-    for (int32 Line = 0; Line < GetNumLines(); ++Line)
+    for (int32_t Line = 0; Line < GetNumLines(); ++Line)
     {
         float LineTop = GetLineTopY(Line);
         float LineBottom = GetLineBottomY(Line);

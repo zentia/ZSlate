@@ -4,6 +4,7 @@
 #include "ZSlate/Application/SlateInput.h"
 #include "ZSlate/Core/SlateClipboard.h"
 
+#include <cstdint>
 #include <functional>
 #include <string>
 #include <vector>
@@ -17,11 +18,11 @@ namespace ZSlate
 // Text location (line + column offset)
 struct FTextLocation
 {
-    int32 LineIndex {0};     // 0-based line index
-    int32 CharIndex {0};     // 0-based character index within line
+    int32_t LineIndex {0};     // 0-based line index
+    int32_t CharIndex {0};     // 0-based character index within line
     
     FTextLocation() = default;
-    FTextLocation(int32 Line, int32 Char) : LineIndex(Line), CharIndex(Char) {}
+    FTextLocation(int32_t Line, int32_t Char) : LineIndex(Line), CharIndex(Char) {}
     
     bool operator==(const FTextLocation& Other) const
     {
@@ -121,7 +122,7 @@ public:
     
     // Scroll management
     void ScrollToCursor();
-    void ScrollToLine(int32 LineIndex);
+    void ScrollToLine(int32_t LineIndex);
     
     // Text modification
     void InsertTextAtCursor(const std::string& Text);
@@ -171,17 +172,17 @@ private:
     // UTF-8 utilities
     size_t GetPrevCharStart(size_t pos) const;
     size_t GetNextCharStart(size_t pos) const;
-    int32 Utf8ToCharIndex(size_t BytePos, const std::string& Line) const;
-    size_t CharIndexToUtf8(int32 CharIndex, const std::string& Line) const;
+    int32_t Utf8ToCharIndex(size_t BytePos, const std::string& Line) const;
+    size_t CharIndexToUtf8(int32_t CharIndex, const std::string& Line) const;
     
     // Line info
-    const FTextLineInfo& GetLineInfo(int32 LineIndex) const;
-    int32 GetNumLines() const { return static_cast<int32>(Lines.size()); }
+    const FTextLineInfo& GetLineInfo(int32_t LineIndex) const;
+    int32_t GetNumLines() const { return static_cast<int32_t>(Lines.size()); }
     
     // Layout calculations
-    float GetLineHeight(int32 LineIndex) const;
-    float GetLineTopY(int32 LineIndex) const;
-    float GetLineBottomY(int32 LineIndex) const;
+    float GetLineHeight(int32_t LineIndex) const;
+    float GetLineTopY(int32_t LineIndex) const;
+    float GetLineBottomY(int32_t LineIndex) const;
     float GetContentHeight() const;
     
     // Hit testing
@@ -231,7 +232,7 @@ private:
     
     // Composition (IME) support
     std::string CompositionText;
-    int32 CompositionCursorPos {0};
+    int32_t CompositionCursorPos {0};
     
     // Blinking cursor
     mutable float m_CursorBlinkTime {0.0f};
