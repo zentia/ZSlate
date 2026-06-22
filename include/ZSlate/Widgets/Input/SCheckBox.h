@@ -31,8 +31,8 @@ public:
         ctx.Renderer->drawRect(rect, BorderColor, 1.0f);
         if (Checked)
         {
-            const float inset = rect.width * 0.25f;
-            const UIRect mark(rect.x + inset, rect.y + inset, rect.width - inset * 2.0f, rect.height - inset * 2.0f);
+            const float inset = rect.w * 0.25f;
+            const UIRect mark(rect.x + inset, rect.y + inset, rect.w - inset * 2.0f, rect.h - inset * 2.0f);
             ctx.Renderer->drawQuad(mark, CheckColor);
         }
     }

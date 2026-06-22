@@ -6,6 +6,8 @@
 #include <functional>
 #include <memory>
 #include <vector>
+#include <algorithm>
+#include <cstdint>
 
 namespace ZSlate
 {
@@ -24,10 +26,10 @@ struct IListViewDataSource
     virtual ~IListViewDataSource() = default;
     
     // Get total number of items
-    virtual int32 GetNumItems() const = 0;
+    virtual int32_t GetNumItems() const = 0;
     
     // Get item at index
-    virtual ItemType GetItem(int32 Index) const = 0;
+    virtual ItemType GetItem(int32_t Index) const = 0;
 };
 
 // Simple data source using a vector
@@ -38,10 +40,10 @@ public:
     explicit TSimpleListViewDataSource(std::vector<ItemType> InItems)
         : Items(std::move(InItems)) {}
     
-    int32 GetNumItems() const override { return static_cast<int32>(Items.size()); }
-    ItemType GetItem(int32 Index) const override
+    int32_t GetNumItems() const override { return static_cast<int32_t>(Items.size()); }
+    ItemType GetItem(int32_t Index) const override
     {
-        if (Index >= 0 && Index < static_cast<int32>(Items.size()))
+        if (Index >= 0 && Index < static_cast<int32_t>(Items.size()))
             return Items[static_cast<size_t>(Index)];
         return ItemType{};
     }
@@ -53,13 +55,13 @@ private:
     std::vector<ItemType> Items;
 };
 
-// Item widget generator callback
-template<typename ItemType>
-using FOnGenerateItemWidget = std::function<std::shared_ptr<SWidget>(const ItemType& Item, int32 Index, const std::shared_ptr<SListView<ItemType>>& ListView)>;
+    // Item widget generator callback
+    template<typename ItemType>
+    using FOnGenerateItemWidget = std::function<std::shared_ptr<SWidget>(const ItemType& Item, int32_t Index, SListView<ItemType>* ListView)>;
 
-// Selection changed callback
-template<typename ItemType>
-using FOnSelectionChanged = std::function<void(const std::vector<int32>& SelectedIndices)>;
+    // Selection changed callback
+    template<typename ItemType>
+    using FOnSelectionChanged = std::function<void(const std::vector<int32_t>& SelectedIndices)>;
 
 // ============================================================================
 // SListView - Virtualized list view widget (UE SListView analogue)
@@ -108,7 +110,7 @@ public:
     }
 
     // Selection management
-    void SetSelection(int32 Index, bool bClearOtherSelections = true)
+    void SetSelection(int32_t Index, bool bClearOtherSelections = true)
     {
         if (bClearOtherSelections)
             m_SelectedIndices.clear();
@@ -124,7 +126,7 @@ public:
         }
     }
 
-    void SetSelection(const std::vector<int32>& Indices)
+    void SetSelection(const std::vector<int32_t>& Indices)
     {
         m_SelectedIndices = Indices;
         std::sort(m_SelectedIndices.begin(), m_SelectedIndices.end());
@@ -143,14 +145,14 @@ public:
         }
     }
 
-    const std::vector<int32>& GetSelectedIndices() const { return m_SelectedIndices; }
+    const std::vector<int32_t>& GetSelectedIndices() const { return m_SelectedIndices; }
 
     // Scroll to item
-    void ScrollToItem(int32 Index)
+    void ScrollToItem(int32_t Index)
     {
         if (!DataSource) return;
         
-        const int32 NumItems = GetNumItems();
+        const int32_t NumItems = GetNumItems();
         if (Index < 0 || Index >= NumItems) return;
         
         float ItemTop = GetItemTopPosition(Index);
@@ -166,19 +168,19 @@ public:
     }
 
     // Get number of items
-    int32 GetNumItems() const
+    int32_t GetNumItems() const
     {
         return DataSource ? DataSource->GetNumItems() : 0;
     }
 
     // Get item height (with caching support)
-    float GetItemHeight(int32 Index) const
+    float GetItemHeight(int32_t Index) const
     {
         if (Options.ItemHeight > 0.0f)
             return Options.ItemHeight;
         
         // Cache miss - estimate from average or use default
-        if (Index < 0 || Index >= static_cast<int32>(m_CachedItemHeights.size()))
+        if (Index < 0 || Index >= static_cast<int32_t>(m_CachedItemHeights.size()))
         {
             if (!m_CachedItemHeights.empty())
                 return m_AverageItemHeight;
@@ -214,16 +216,22 @@ public:
     void OnMouseMove(const Vector2& pos) override;
     FReply OnMouseButtonUp(const Vector2& pos, int button) override;
     void OnMouseCaptureLost() override;
+    
+    // Scrollbar drag handling
+    void ApplyThumbDrag(float PointerY, const UIRect& Rect, float TotalHeight);
 
     // Clipping
     bool ClipsContent() const override { return true; }
+    
+    // Configuration options (public for easy access)
+    FListViewOptions Options;
 
 private:
     // Calculate the Y position (from top) of item at index
-    float GetItemTopPosition(int32 Index) const
+    float GetItemTopPosition(int32_t Index) const
     {
         float Pos = 0.0f;
-        for (int32 i = 0; i < Index; ++i)
+        for (int32_t i = 0; i < Index; ++i)
         {
             Pos += GetItemHeight(i);
         }
@@ -233,9 +241,9 @@ private:
     // Calculate total content height
     float CalculateTotalHeight() const
     {
-        const int32 NumItems = GetNumItems();
+        const int32_t NumItems = GetNumItems();
         float Total = 0.0f;
-        for (int32 i = 0; i < NumItems; ++i)
+        for (int32_t i = 0; i < NumItems; ++i)
         {
             Total += GetItemHeight(i);
         }
@@ -258,13 +266,13 @@ private:
     }
 
     // Create or reuse item widget
-    std::shared_ptr<SWidget> CreateItemWidget(int32 Index)
+    std::shared_ptr<SWidget> CreateItemWidget(int32_t Index)
     {
         if (!DataSource || !OnGenerateItemWidget)
             return nullptr;
         
         const ItemType& Item = DataSource->GetItem(Index);
-        return OnGenerateItemWidget(Item, Index, shared_from_this());
+        return OnGenerateItemWidget(Item, Index, this);
     }
 
     // Update visible items based on scroll offset
@@ -272,14 +280,14 @@ private:
     {
         m_VisibleItems.clear();
         
-        const int32 NumItems = GetNumItems();
+        const int32_t NumItems = GetNumItems();
         if (NumItems == 0) return;
         
         float ViewTop = m_ScrollOffset;
         float ViewBottom = m_ScrollOffset + m_CachedGeometry.LocalSize.y;
         
-        int32 FirstVisible = 0;
-        int32 LastVisible = NumItems - 1;
+        int32_t FirstVisible = 0;
+        int32_t LastVisible = NumItems - 1;
         
         // Find first visible item using binary search for efficiency
         FirstVisible = FindFirstVisibleItem(ViewTop);
@@ -290,7 +298,7 @@ private:
         if (LastVisible >= NumItems) LastVisible = NumItems - 1;
         
         // Create widgets for visible items
-        for (int32 i = FirstVisible; i <= LastVisible; ++i)
+        for (int32_t i = FirstVisible; i <= LastVisible; ++i)
         {
             auto Widget = CreateItemWidget(i);
             if (Widget)
@@ -301,17 +309,17 @@ private:
     }
 
     // Binary search to find first visible item
-    int32 FindFirstVisibleItem(float ViewTop) const
+    int32_t FindFirstVisibleItem(float ViewTop) const
     {
-        const int32 NumItems = GetNumItems();
+        const int32_t NumItems = GetNumItems();
         if (NumItems == 0) return 0;
         
-        int32 Low = 0;
-        int32 High = NumItems - 1;
+        int32_t Low = 0;
+        int32_t High = NumItems - 1;
         
         while (Low < High)
         {
-            int32 Mid = (Low + High) / 2;
+            int32_t Mid = (Low + High) / 2;
             float ItemTop = GetItemTopPosition(Mid);
             
             if (ItemTop < ViewTop)
@@ -332,17 +340,17 @@ private:
     }
 
     // Binary search to find last visible item
-    int32 FindLastVisibleItem(float ViewBottom) const
+    int32_t FindLastVisibleItem(float ViewBottom) const
     {
-        const int32 NumItems = GetNumItems();
+        const int32_t NumItems = GetNumItems();
         if (NumItems == 0) return 0;
         
-        int32 Low = 0;
-        int32 High = NumItems - 1;
+        int32_t Low = 0;
+        int32_t High = NumItems - 1;
         
         while (Low < High)
         {
-            int32 Mid = (Low + High + 1) / 2;
+            int32_t Mid = (Low + High + 1) / 2;
             float ItemTop = GetItemTopPosition(Mid);
             float ItemBottom = ItemTop + GetItemHeight(Mid);
             
@@ -373,13 +381,13 @@ private:
     }
 
     // Hit test: find item index at position
-    int32 HitTestIndex(const Vector2& LocalPos) const
+    int32_t HitTestIndex(const Vector2& LocalPos) const
     {
         float ViewTop = m_ScrollOffset;
         float Y = ViewTop;
         
-        const int32 NumItems = GetNumItems();
-        for (int32 i = 0; i < NumItems; ++i)
+        const int32_t NumItems = GetNumItems();
+        for (int32_t i = 0; i < NumItems; ++i)
         {
             float ItemHeight = GetItemHeight(i);
             if (LocalPos.y >= Y && LocalPos.y < Y + ItemHeight)
@@ -393,19 +401,18 @@ private:
     // Visible item info
     struct FVisibleItem
     {
-        int32 Index;
+        int32_t Index;
         std::shared_ptr<SWidget> Widget;
     };
 
-    FListViewOptions Options;
     std::shared_ptr<IListViewDataSource<ItemType>> DataSource;
     FOnGenerateItemWidget<ItemType> OnGenerateItemWidget;
     FOnSelectionChanged<ItemType> OnSelectionChanged;
     
     mutable float m_ScrollOffset {0.0f};
     mutable std::vector<FVisibleItem> m_VisibleItems;
-    mutable std::vector<int32> m_SelectedIndices;
-    mutable int32 m_HoveredIndex {-1};
+    mutable std::vector<int32_t> m_SelectedIndices;
+    mutable int32_t m_HoveredIndex {-1};
     mutable bool m_DraggingThumb {false};
     mutable float m_DragGrab {0.0f};
     
@@ -424,7 +431,7 @@ template<typename ItemType>
 std::shared_ptr<SListView<ItemType>> CreateListView(
     std::vector<ItemType> Items,
     FOnGenerateItemWidget<ItemType> Generator,
-    const SListView<ItemType>::FListViewOptions& Options = SListView<ItemType>::FListViewOptions())
+    const typename SListView<ItemType>::FListViewOptions& Options = SListView<ItemType>::FListViewOptions())
 {
     auto ListView = std::make_shared<SListView<ItemType>>(Options);
     ListView->SetDataSource(std::make_shared<TSimpleListViewDataSource<ItemType>>(std::move(Items)));

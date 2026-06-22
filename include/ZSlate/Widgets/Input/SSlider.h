@@ -33,16 +33,16 @@ public:
         const UIRect rect = geom.ToRect();
 
         const float track_h = 4.0f;
-        const float track_y = rect.y + (rect.height - track_h) * 0.5f;
-        const UIRect track(rect.x, track_y, rect.width, track_h);
+        const float track_y = rect.y + (rect.h - track_h) * 0.5f;
+        const UIRect track(rect.x, track_y, rect.w, track_h);
         ctx.Renderer->drawQuad(track, TrackColor);
 
-        const float usable = rect.width - HandleWidth;
+        const float usable = rect.w - HandleWidth;
         const float fill_w = HandleWidth * 0.5f + usable * Clamp01(Value);
         ctx.Renderer->drawQuad(UIRect(rect.x, track_y, fill_w, track_h), FillColor);
 
         const float handle_x = rect.x + usable * Clamp01(Value);
-        const UIRect handle(handle_x, rect.y, HandleWidth, rect.height);
+        const UIRect handle(handle_x, rect.y, HandleWidth, rect.h);
         ctx.Renderer->drawQuad(handle, (m_Hovered || m_Dragging) ? HandleHoverColor : HandleColor);
     }
 
@@ -78,7 +78,7 @@ private:
     void SetValueFromPosition(const Vector2& pos)
     {
         const UIRect rect = m_CachedGeometry.ToRect();
-        const float usable = rect.width - HandleWidth;
+        const float usable = rect.w - HandleWidth;
         float t = (usable > 0.0f) ? (pos.x - rect.x - HandleWidth * 0.5f) / usable : 0.0f;
         t = Clamp01(t);
         if (t != Value)

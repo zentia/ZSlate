@@ -27,7 +27,7 @@ void SListView<ItemType>::ArrangeChildren(const FGeometry& allotted, std::vector
     
     for (const FVisibleItem& VisibleItem : m_VisibleItems)
     {
-        int32 Index = VisibleItem.Index;
+        int32_t Index = VisibleItem.Index;
         std::shared_ptr<SWidget> Widget = VisibleItem.Widget;
         
         if (!Widget) continue;
@@ -112,14 +112,14 @@ void SListView<ItemType>::OnPaint(const FPaintContext& ctx, const FGeometry& geo
         const float ThumbY = Rect.y + t * (ViewHeight - ThumbHeight);
         
         ctx.Renderer->drawQuad(
-            UIRect(Rect.x + Rect.width - Options.ScrollBarWidth, ThumbY, Options.ScrollBarWidth, ThumbHeight),
+            UIRect(Rect.x + Rect.w - Options.ScrollBarWidth, ThumbY, Options.ScrollBarWidth, ThumbHeight),
             Options.ScrollBarColor);
     }
     
     // Draw selection/hover highlights
     float Y = m_ScrollOffset;
     
-    for (int32 Index = 0; Index < GetNumItems(); ++Index)
+    for (int32_t Index = 0; Index < GetNumItems(); ++Index)
     {
         float ItemHeight = GetItemHeight(Index);
         float ItemTop = Y;
@@ -181,14 +181,14 @@ FReply SListView<ItemType>::OnMouseButtonDown(const Vector2& pos, int button)
     
     const float TotalHeight = CalculateTotalHeight();
     const UIRect Rect = m_CachedGeometry.ToRect();
-    const float ViewHeight = Rect.height;
+    const float ViewHeight = Rect.h;
     
     if (TotalHeight <= ViewHeight || ViewHeight <= 0.0f)
         return FReply::Unhandled();
     
     // Check if click is in scrollbar area
     const float Band = std::max(Options.ScrollBarWidth, 12.0f);
-    if (pos.x < Rect.x + Rect.width - Band)
+    if (pos.x < Rect.x + Rect.w - Band)
         return FReply::Unhandled();
     
     const float ThumbHeight = ViewHeight * (ViewHeight / TotalHeight);
@@ -221,11 +221,11 @@ void SListView<ItemType>::OnMouseMove(const Vector2& pos)
     }
     
     // Update hover state
-    int32 NewHoveredIndex = HitTestIndex(pos - m_CachedGeometry.AbsolutePosition);
+    int32_t NewHoveredIndex = HitTestIndex(pos - m_CachedGeometry.AbsolutePosition);
     if (NewHoveredIndex != m_HoveredIndex)
     {
         // Clear previous hover
-        if (m_HoveredIndex >= 0 && m_HoveredIndex < static_cast<int32>(m_VisibleItems.size()))
+        if (m_HoveredIndex >= 0 && m_HoveredIndex < static_cast<int32_t>(m_VisibleItems.size()))
         {
             // Could trigger hover leave event
         }
@@ -266,7 +266,7 @@ void SListView<ItemType>::OnMouseCaptureLost()
 template<typename ItemType>
 void SListView<ItemType>::ApplyThumbDrag(float PointerY, const UIRect& Rect, float TotalHeight)
 {
-    const float ViewHeight = Rect.height;
+    const float ViewHeight = Rect.h;
     if (TotalHeight <= ViewHeight || ViewHeight <= 0.0f)
         return;
     
@@ -291,7 +291,7 @@ void SListView<ItemType>::ApplyThumbDrag(float PointerY, const UIRect& Rect, flo
 // ============================================================================
 
 // Common item types used in the engine
-template class SListView<int32>;
+template class SListView<int32_t>;
 template class SListView<std::string>;
 template class SListView<std::shared_ptr<void>>;
 

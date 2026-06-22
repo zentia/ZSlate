@@ -13,6 +13,8 @@ enum class EKey
     Delete,
     Enter,
     Escape,
+    Up,
+    Down,
     Left,
     Right,
     Home,

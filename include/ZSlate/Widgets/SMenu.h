@@ -60,14 +60,14 @@ public:
         const UIColor mark = Disabled ? UIColor(MarkColor.x, MarkColor.y, MarkColor.z, 0.4f) : MarkColor;
         if (HasSubMenu)
         {
-            ctx.Renderer->drawText(UIRect(rect.x + rect.width - gutter, rect.y, gutter, rect.height),
+            ctx.Renderer->drawText(UIRect(rect.x + rect.w - gutter, rect.y, gutter, rect.h),
                                    ">", FontSize, mark, TextAnchor::MiddleCenter, TextWrapMode::NoWrap, nullptr);
         }
         else if (ShowCheck)
         {
             const float s = FontSize * 0.5f;
-            const float mx = rect.x + rect.width - gutter + (gutter - s) * 0.5f;
-            const float my = rect.y + (rect.height - s) * 0.5f;
+            const float mx = rect.x + rect.w - gutter + (gutter - s) * 0.5f;
+            const float my = rect.y + (rect.h - s) * 0.5f;
             if (Checked)
             {
                 ctx.Renderer->drawQuad(UIRect(mx, my, s, s), mark);

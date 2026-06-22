@@ -7,6 +7,7 @@
 #include <cmath>
 #include <cstring>
 #include <cstdint>
+#include <algorithm>
 
 namespace ZSlate
 {
@@ -77,12 +78,12 @@ struct Vector2
     bool IsFinite() const { return std::isfinite(x) && std::isfinite(y); }
 
     // Component-wise min/max
-    static Vector2 Min(const Vector2& A, const Vector2& B) { return Vector2(std::min(A.x, B.x), std::min(A.y, B.y)); }
-    static Vector2 Max(const Vector2& A, const Vector2& B) { return Vector2(std::max(A.x, B.x), std::max(A.y, B.y)); }
-    static Vector2 Clamp(const Vector2& V, const Vector2& Min, const Vector2& Max)
+    static Vector2 VectorMin(const Vector2& A, const Vector2& B) { return Vector2(std::min(A.x, B.x), std::min(A.y, B.y)); }
+    static Vector2 VectorMax(const Vector2& A, const Vector2& B) { return Vector2(std::max(A.x, B.x), std::max(A.y, B.y)); }
+    static Vector2 Clamp(const Vector2& V, const Vector2& MinVal, const Vector2& MaxVal)
     {
-        return Vector2(std::min(std::max(V.x, Min.x), Max.x),
-                       std::min(std::max(V.y, Min.y), Max.y));
+        return Vector2(std::min(std::max(V.x, MinVal.x), MaxVal.x),
+                       std::min(std::max(V.y, MinVal.y), MaxVal.y));
     }
 };
 
@@ -92,8 +93,6 @@ inline Vector2 operator*(float S, const Vector2& V) { return V * S; }
 // ============================================================================
 // Vector4 - 4D vector, used for colors
 // ============================================================================
-
-using UIColor = Vector4;
 
 struct Vector4
 {
@@ -137,6 +136,9 @@ struct Vector4
 };
 
 inline Vector4 operator*(float S, const Vector4& V) { return V * S; }
+
+// Color type alias
+using UIColor = Vector4;
 
 // ============================================================================
 // UIRect - 2D rectangle (used for clipping, geometry)

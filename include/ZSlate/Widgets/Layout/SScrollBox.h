@@ -96,7 +96,7 @@ public:
         const float t = (max_scroll > 0.0f) ? (m_ScrollOffset / max_scroll) : 0.0f;
         const float thumb_y = rect.y + t * (view - thumb_h);
         ctx.Renderer->drawQuad(
-            UIRect(rect.x + rect.width - ScrollBarWidth, thumb_y, ScrollBarWidth, thumb_h), ScrollBarColor);
+            UIRect(rect.x + rect.w - ScrollBarWidth, thumb_y, ScrollBarWidth, thumb_h), ScrollBarColor);
     }
 
     FReply OnMouseWheel(const Vector2& /*pos*/, float delta) override
@@ -122,14 +122,14 @@ public:
             return FReply::Unhandled();
         const float content = ContentHeight();
         const UIRect rect = m_CachedGeometry.ToRect();
-        const float view = rect.height;
+        const float view = rect.h;
         if (content <= view || view <= 0.0f)
             return FReply::Unhandled();  // no overflow -> no bar to grab
 
         // Generous grab band on the right edge (wider than the drawn bar so it is
         // easy to hit at any DPI).
         const float band = std::max(ScrollBarWidth, 12.0f);
-        if (pos.x < rect.x + rect.width - band)
+        if (pos.x < rect.x + rect.w - band)
             return FReply::Unhandled();
 
         const float thumb_h = view * (view / content);
@@ -168,13 +168,13 @@ public:
 private:
     float ContentHeight() const
     {
-        float height = 0.0f;
+        float total_height = 0.0f;
         for (const std::shared_ptr<SWidget>& child : m_Children)
         {
             if (child && child->Visibility != EVisibility::Collapsed)
-                height += child->GetDesiredSize().y;
+                total_height += child->GetDesiredSize().y;
         }
-        return height;
+        return total_height;
     }
 
     // Map a pointer y (screen space) to a scroll offset, keeping the thumb anchored
@@ -182,7 +182,7 @@ private:
     // they already computed this frame.
     void ApplyThumbDrag(float pointer_y, const UIRect& rect, float content)
     {
-        const float view = rect.height;
+        const float view = rect.h;
         if (content <= view || view <= 0.0f)
             return;
         const float thumb_h = view * (view / content);
