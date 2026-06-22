@@ -531,7 +531,7 @@ void SRichTextBlock::OnPaint(const FPaintContext& ctx, const FGeometry& geom) co
     }
 }
 
-void SRichTextBlock::ComputeLineLayout(FRichTextLine& /*Line*/, float /*AvailableWidth*/) const
+void SRichTextBlock::ComputeLineLayout(FRichTextLine& /*Line*/, float /*AvailableWidth*/)
 {
     // Line layout is handled during parsing for now
     // Full word-wrap implementation would go here

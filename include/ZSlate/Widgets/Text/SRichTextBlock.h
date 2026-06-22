@@ -182,8 +182,6 @@ public:
         : Options(InOptions)
         , m_Parser()
     {
-        FontSize = Options.FontSize;
-        Color = Options.Color;
     }
 
     // Set the rich text content
@@ -197,10 +195,10 @@ public:
     const std::string& GetText() const { return Text; }
 
     // Set text color
-    void SetColor(const UIColor& InColor) { Color = InColor; Options.Color = InColor; }
+    void SetColor(const UIColor& InColor) { Options.Color = InColor; }
 
     // Set font size
-    void SetFontSize(float InSize) { FontSize = InSize; Options.FontSize = InSize; }
+    void SetFontSize(float InSize) { Options.FontSize = InSize; }
 
     // Set line height percentage
     void SetLineHeightPercentage(float InPercentage) { Options.LineHeightPercentage = InPercentage; }
@@ -239,7 +237,7 @@ public:
 
 private:
     // Compute layout for a single line
-    mutable void ComputeLineLayout(FRichTextLine& Line, float AvailableWidth) const;
+    void ComputeLineLayout(FRichTextLine& Line, float AvailableWidth) const;
 
     // Paint a single line
     void PaintLine(const FPaintContext& ctx, const UIRect& LineRect, const FRichTextLine& Line) const;
