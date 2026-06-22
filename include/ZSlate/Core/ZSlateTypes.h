@@ -94,8 +94,6 @@ inline Vector2 operator*(float S, const Vector2& V) { return V * S; }
 // Vector4 - 4D vector, used for colors
 // ============================================================================
 
-using UIColor = Vector4;
-
 struct Vector4
 {
     float x {0.0f};
@@ -138,6 +136,9 @@ struct Vector4
 };
 
 inline Vector4 operator*(float S, const Vector4& V) { return V * S; }
+
+// Type alias for colors
+using UIColor = Vector4;
 
 // ============================================================================
 // UIRect - 2D rectangle (used for clipping, geometry)
