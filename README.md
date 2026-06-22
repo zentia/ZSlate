@@ -90,6 +90,7 @@ target_link_libraries(MyApp PRIVATE ZSlate)
 | `STextBlock` | Text display |
 | `SSpacer` | Empty space |
 | `SScrollBox` | Scrollable container |
+| `SListView<T>` | **Virtualized list view** (supports 1000+ items efficiently) |
 | `SBorder` | Decorative border |
 | `SOverlay` | Z-ordered overlay (Z-Stack) |
 | `SSplitter` | Resizable splitter |
@@ -97,6 +98,58 @@ target_link_libraries(MyApp PRIVATE ZSlate)
 | `SSlider` | Slider control |
 | `SEditableTextBox` | Text input field |
 | `SMenu` | Menu system |
+
+### SListView Example
+
+```cpp
+#include "ZSlate/Widgets/SListView.h"
+
+// Define your item type
+struct FMyItem
+{
+    std::string Name;
+    int32 Value;
+};
+
+// Create list view
+std::vector<FMyItem> Items;
+for (int i = 0; i < 1000; ++i)
+{
+    Items.push_back({"Item " + std::to_string(i), i});
+}
+
+auto ListView = ZSlate::CreateListView<FMyItem>(
+    std::move(Items),
+    [](const FMyItem& Item, int32 Index, const std::shared_ptr<ZSlate::SListView<FMyItem>>& ListView) {
+        auto Row = std::make_shared<ZSlate::SHorizontalBox>();
+        
+        auto IndexText = std::make_shared<ZSlate::STextBlock>();
+        IndexText->Text = "[" + std::to_string(Index) + "] ";
+        IndexText->FontSize = 14.0f;
+        Row->AddSlot(IndexText);
+        
+        auto NameText = std::make_shared<ZSlate::STextBlock>();
+        NameText->Text = Item.Name;
+        NameText->FontSize = 14.0f;
+        Row->AddSlot(NameText);
+        
+        return Row;
+    },
+    ZSlate::SListView<FMyItem>::FListViewOptions{
+        .ItemHeight = 24.0f,
+        .ScrollBarColor = ZSlate::Colors::Gray
+    }
+);
+
+// Set selection callback
+ListView->SetOnSelectionChanged([](const std::vector<int32>& SelectedIndices) {
+    if (!SelectedIndices.empty())
+        std::cout << "Selected: " << SelectedIndices.front() << std::endl;
+});
+
+// Scroll to a specific item
+ListView->ScrollToItem(500);
+```
 
 ## Type Reference
 
