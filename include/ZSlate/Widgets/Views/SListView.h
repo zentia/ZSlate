@@ -75,6 +75,7 @@ public:
     {
         float ItemHeight {24.0f};                    // Fixed height for all items (0 = variable)
         float ScrollBarWidth {6.0f};                  // Scrollbar width
+        FMargin Padding {4.0f};                       // Padding around content
         UIColor ScrollBarColor {0.40f, 0.40f, 0.46f, 0.85f};
         UIColor SelectedBackgroundColor {0.2f, 0.45f, 0.75f, 0.8f};
         UIColor HoveredBackgroundColor {0.3f, 0.3f, 0.3f, 0.5f};
