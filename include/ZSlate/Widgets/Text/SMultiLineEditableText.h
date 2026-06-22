@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ZSlate/Widgets/SWidget.h"
+#include "ZSlate/Widgets/SLeafWidget.h"
 #include "ZSlate/Application/SlateInput.h"
 #include "ZSlate/Core/SlateClipboard.h"
 

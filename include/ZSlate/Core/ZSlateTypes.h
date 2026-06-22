@@ -198,6 +198,32 @@ struct UIRect
 };
 
 // ============================================================================
+// Text Alignment and Wrapping
+// ============================================================================
+
+// Text anchor points (alignment within a rectangle)
+enum class TextAnchor
+{
+    UpperLeft,
+    UpperCenter,
+    UpperRight,
+    MiddleLeft,
+    MiddleCenter,
+    MiddleRight,
+    LowerLeft,
+    LowerCenter,
+    LowerRight
+};
+
+// Text wrapping modes
+enum class TextWrapMode
+{
+    NoWrap,
+    Wrap,
+    WrapAtWordBoundaryOrOverflow
+};
+
+// ============================================================================
 // Color Constants
 // ============================================================================
 

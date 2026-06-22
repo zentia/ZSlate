@@ -61,7 +61,7 @@ void SlateApplication::PaintInto(ISlateRenderer* renderer, const UIRect& region)
     m_Root->CacheDesiredSize();
 
     // 2. Top-down arrange + paint, clipped to the host region.
-    const FGeometry root_geometry(Vector2(region.x, region.y), Vector2(region.width, region.height));
+    const FGeometry root_geometry(Vector2(region.x, region.y), Vector2(region.w, region.h));
     FPaintContext ctx;
     ctx.Renderer = renderer;
     ctx.LayerId = 0;
