@@ -30,6 +30,15 @@ struct FTextLocation
         return LineIndex == Other.LineIndex && CharIndex == Other.CharIndex;
     }
     bool operator!=(const FTextLocation& Other) const { return !(*this == Other); }
+    
+    FTextLocation operator+(const FTextLocation& Other) const
+    {
+        return FTextLocation(LineIndex + Other.LineIndex, CharIndex + Other.CharIndex);
+    }
+    FTextLocation operator-(const FTextLocation& Other) const
+    {
+        return FTextLocation(LineIndex - Other.LineIndex, CharIndex - Other.CharIndex);
+    }
 };
 
 // Text selection (start + end locations)
@@ -244,6 +253,9 @@ private:
     mutable bool m_CursorVisible {true};
     
     ISlateTextMeasurer* m_TextMeasurer {nullptr};
+
+    // UTF-8 helper
+    static void AppendUtf8(std::string& s, unsigned int cp);
 
 public:
     // Callbacks
@@ -594,28 +606,7 @@ public:
         }
     }
 
-    static void AppendUtf8(std::string& s, unsigned int cp)
-    {
-        if (cp < 0x80) s.push_back(static_cast<char>(cp));
-        else if (cp < 0x800)
-        {
-            s.push_back(static_cast<char>(0xC0 | (cp >> 6)));
-            s.push_back(static_cast<char>(0x80 | (cp & 0x3F)));
-        }
-        else if (cp < 0x10000)
-        {
-            s.push_back(static_cast<char>(0xE0 | (cp >> 12)));
-            s.push_back(static_cast<char>(0x80 | ((cp >> 6) & 0x3F)));
-            s.push_back(static_cast<char>(0x80 | (cp & 0x3F)));
-        }
-        else
-        {
-            s.push_back(static_cast<char>(0xF0 | (cp >> 18)));
-            s.push_back(static_cast<char>(0x80 | ((cp >> 12) & 0x3F)));
-            s.push_back(static_cast<char>(0x80 | ((cp >> 6) & 0x3F)));
-            s.push_back(static_cast<char>(0x80 | (cp & 0x3F)));
-        }
-    }
+    static void AppendUtf8(std::string& s, unsigned int cp);
 
     size_t GetPreviousCharStart(size_t pos) const
     {

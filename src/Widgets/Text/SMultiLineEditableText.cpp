@@ -20,7 +20,7 @@ void SMultiLineEditableText::SetText(const std::string& InText)
         OnTextChanged(TextContent);
 }
 
-const std::vector<FTextLineInfo> SMultiLineEditableText::SplitIntoLines(const std::string& Text) const
+std::vector<FTextLineInfo> SMultiLineEditableText::SplitIntoLines(const std::string& Text) const
 {
     std::vector<FTextLineInfo> Result;
     std::string CurrentLine;
@@ -651,7 +651,7 @@ void SMultiLineEditableText::DrawText(const FPaintContext& ctx, const FGeometry&
         );
         
         ctx.Renderer->drawText(TextRect, HintText, Options.FontSize, Options.HintColor, 
-                               TextAnchor::TopLeft, TextWrapMode::NoWrap, nullptr);
+                               TextAnchor::UpperLeft, TextWrapMode::NoWrap, nullptr);
         return;
     }
     
@@ -689,7 +689,7 @@ void SMultiLineEditableText::DrawText(const FPaintContext& ctx, const FGeometry&
         }
         
         ctx.Renderer->drawText(TextRect, DisplayText, Options.FontSize, Options.TextColor,
-                               TextAnchor::TopLeft, TextWrapMode::NoWrap, nullptr);
+                               TextAnchor::UpperLeft, TextWrapMode::NoWrap, nullptr);
     }
 }
 
@@ -709,7 +709,7 @@ void SMultiLineEditableText::DrawCursor(const FPaintContext& ctx, const FGeometr
     
     const UIRect Rect = geom.ToRect();
     float CursorX = Rect.x + Options.Padding.Left;
-    float CursorY = Rect.y + GetLineTopY(CursorLocation.LineIndex) - ViewTop + Options.Padding.Top;
+    float CursorY = Rect.y + GetLineTopY(CursorLocation.LineIndex) - ScrollOffsetY + Options.Padding.Top;
     float CursorHeight = GetLineHeight(CursorLocation.LineIndex) - Options.Padding.GetTotalVertical();
     
     // Draw vertical cursor line
@@ -727,9 +727,9 @@ void SMultiLineEditableText::DrawScrollBar(const FPaintContext& ctx, const FGeom
     
     if (ThumbSize <= 0.0f) return;
     
-    ctx.Renderer->drawQuad(UIRect(Rect.x + Rect.w - Options.ScrollBarColor.GetTotalHorizontal(),
+    ctx.Renderer->drawQuad(UIRect(Rect.x + Rect.w - Options.ScrollBarColor.x - Options.ScrollBarColor.z,
                                    Rect.y + ThumbPos,
-                                   Options.ScrollBarColor,
+                                   Options.ScrollBarColor.x + Options.ScrollBarColor.z,
                                    ThumbSize),
                            Options.ScrollBarColor);
 }
@@ -835,7 +835,7 @@ FReply SMultiLineEditableText::OnMouseButtonDown(const Vector2& pos, int button)
     
     if (ContentHeight > ViewHeight)
     {
-        const float Band = std::max(Options.ScrollBarColor.GetTotalHorizontal(), 12.0f);
+        const float Band = std::max<float>(Options.ScrollBarColor.x + Options.ScrollBarColor.z, 12.0f);
         if (pos.x >= Rect.x + Rect.w - Band)
         {
             // Click on scrollbar
@@ -907,7 +907,7 @@ void SMultiLineEditableText::OnKeyChar(unsigned int codepoint)
     if (codepoint < 32) return;  // Other control characters
     
     std::string utf8_char;
-    AppendUtf8(utf8_char, codepoint);
+    SMultiLineEditableText::AppendUtf8(utf8_char, codepoint);
     InsertTextAtCursor(utf8_char);
 }
 
@@ -1029,10 +1029,10 @@ FReply SMultiLineEditableText::OnKeyDown(EKey key)
 
 ECursorType SMultiLineEditableText::GetCursor() const
 {
-    return ECursorType::Text;  // TODO: Return IBeam when focused
+    return ECursorType::TextBeam;  // TODO: Return IBeam when focused
 }
 
-void SMultiLineEditableText::AppendUtf8(std::string& s, unsigned int cp) const
+void SMultiLineEditableText::AppendUtf8(std::string& s, unsigned int cp)
 {
     if (cp < 0x80) s.push_back(static_cast<char>(cp));
     else if (cp < 0x800)

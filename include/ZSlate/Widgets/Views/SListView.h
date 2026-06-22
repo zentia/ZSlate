@@ -266,7 +266,7 @@ private:
             return nullptr;
         
         const ItemType& Item = DataSource->GetItem(Index);
-        return OnGenerateItemWidget(Item, Index, shared_from_this());
+        return OnGenerateItemWidget(Item, Index, std::static_pointer_cast<SListView<ItemType>>(shared_from_this()));
     }
 
     // Update visible items based on scroll offset
