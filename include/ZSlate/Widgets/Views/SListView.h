@@ -425,7 +425,7 @@ template<typename ItemType>
 std::shared_ptr<SListView<ItemType>> CreateListView(
     std::vector<ItemType> Items,
     FOnGenerateItemWidget<ItemType> Generator,
-    const SListView<ItemType>::FListViewOptions& Options = SListView<ItemType>::FListViewOptions())
+    const typename SListView<ItemType>::FListViewOptions& Options = typename SListView<ItemType>::FListViewOptions{})
 {
     auto ListView = std::make_shared<SListView<ItemType>>(Options);
     ListView->SetDataSource(std::make_shared<TSimpleListViewDataSource<ItemType>>(std::move(Items)));
