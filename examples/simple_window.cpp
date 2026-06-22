@@ -3,10 +3,10 @@
 
 #include "ZSlate/Application/SlateApplication.h"
 #include "ZSlate/Core/SlatePaint.h"
-#include "ZSlate/Widgets/SBorder.h"
-#include "ZSlate/Widgets/SBoxPanel.h"
-#include "ZSlate/Widgets/SButton.h"
-#include "ZSlate/Widgets/STextBlock.h"
+#include "ZSlate/Widgets/Panels/SBorder.h"
+#include "ZSlate/Widgets/Layout/SBoxPanel.h"
+#include "ZSlate/Widgets/Input/SButton.h"
+#include "ZSlate/Widgets/Text/STextBlock.h"
 #include "ZSlate/Widgets/SWidget.h"
 
 #include <cstdio>

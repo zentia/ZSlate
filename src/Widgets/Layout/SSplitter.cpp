@@ -1,4 +1,4 @@
-#include "ZSlate/Widgets/SSplitter.h"
+#include "ZSlate/Widgets/Layout/SSplitter.h"
 
 #include "ZSlate/Core/SlateGeometry.h"
 #include "ZSlate/Core/SlateReply.h"

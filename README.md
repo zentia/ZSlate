@@ -16,8 +16,16 @@ A lightweight, retained-mode UI framework for C++20 applications.
 ZSlate/
 ├── Core/          # Types, geometry, math utilities
 ├── Application/   # SlateApplication, input routing
-├── Widgets/       # 20+ UI widgets
 ├── Backend/       # ISlateRenderer interface
+├── Widgets/
+│   ├── Text/      # STextBlock, SMultiLineEditableText
+│   ├── Input/     # SButton, SCheckBox, SSlider, SEditableTextBox
+│   ├── Layout/    # SBoxPanel, SScrollBox, SSplitter, SSpacer
+│   ├── Views/     # SListView
+│   ├── Panels/    # SBorder, SOverlay, SImage
+│   ├── SWidget.h  # Base widget class
+│   ├── SLeafWidget.h
+│   └── SCompoundWidget.h
 └── Platform/      # Platform-specific implementations
 ```
 
@@ -28,8 +36,8 @@ ZSlate/
 ```cpp
 #include "ZSlate/Application/SlateApplication.h"
 #include "ZSlate/Core/SlatePaint.h"
-#include "ZSlate/Widgets/SButton.h"
-#include "ZSlate/Widgets/STextBlock.h"
+#include "ZSlate/Widgets/Input/SButton.h"
+#include "ZSlate/Widgets/Text/STextBlock.h"
 ```
 
 ### Implement ISlateRenderer
@@ -81,48 +89,89 @@ target_link_libraries(MyApp PRIVATE ZSlate)
 
 ## Widget Reference
 
+### Text Widgets (`Widgets/Text/`)
+
+| Widget | Description |
+|--------|-------------|
+| `STextBlock` | Single line text display |
+| `SMultiLineEditableText` | **Multi-line text editor** with selection, clipboard, scroll |
+
+### Input Widgets (`Widgets/Input/`)
+
+| Widget | Description |
+|--------|-------------|
+| `SButton` | Clickable button |
+| `SCheckBox` | Check box toggle |
+| `SSlider` | Slider control |
+| `SEditableTextBox` | Single-line text input |
+
+### Layout Widgets (`Widgets/Layout/`)
+
+| Widget | Description |
+|--------|-------------|
+| `SBoxPanel` | Horizontal/Vertical box layout |
+| `SScrollBox` | Scrollable container |
+| `SSplitter` | Resizable splitter |
+| `SSpacer` | Empty space |
+
+### Views Widgets (`Widgets/Views/`)
+
+| Widget | Description |
+|--------|-------------|
+| `SListView<T>` | **Virtualized list view** (supports 1000+ items efficiently) |
+
+### Panels Widgets (`Widgets/Panels/`)
+
+| Widget | Description |
+|--------|-------------|
+| `SBorder` | Decorative border container |
+| `SOverlay` | Z-ordered overlay (Z-Stack) |
+| `SImage` | Image display |
+
+### Other Widgets
+
 | Widget | Description |
 |--------|-------------|
 | `SWidget` | Base widget class |
-| `SVerticalBox` | Vertical layout container |
-| `SHorizontalBox` | Horizontal layout container |
-| `SButton` | Clickable button |
-| `STextBlock` | Text display |
-| `SSpacer` | Empty space |
-| `SScrollBox` | Scrollable container |
-| `SListView<T>` | **Virtualized list view** (supports 1000+ items efficiently) |
-| `SBorder` | Decorative border |
-| `SOverlay` | Z-ordered overlay (Z-Stack) |
-| `SSplitter` | Resizable splitter |
-| `SCheckBox` | Check box |
-| `SSlider` | Slider control |
-| `SEditableTextBox` | Text input field |
+| `SLeafWidget` | Leaf widget base (no children) |
+| `SCompoundWidget` | Single-child wrapper |
 | `SMenu` | Menu system |
+
+### SMultiLineEditableText Example
+
+```cpp
+#include "ZSlate/Widgets/Text/SMultiLineEditableText.h"
+
+auto TextEditor = std::make_shared<ZSlate::SMultiLineEditableText>(ZSlate::SMultiLineEditableText::FTextOptions{
+    .FontSize = 14.0f,
+    .LineSpacing = 1.2f,
+    .AutoWrap = true,
+    .HintText = "Enter text here..."
+});
+
+TextEditor->SetText("Hello, this is a multi-line text editor.\nYou can type here!");
+TextEditor->SetOnTextChanged([](const std::string& NewText) {
+    std::cout << "Text changed: " << NewText.size() << " chars" << std::endl;
+});
+```
 
 ### SListView Example
 
 ```cpp
-#include "ZSlate/Widgets/SListView.h"
+#include "ZSlate/Widgets/Views/SListView.h"
+#include "ZSlate/Widgets/Layout/SHorizontalBox.h"
+#include "ZSlate/Widgets/Text/STextBlock.h"
 
-// Define your item type
-struct FMyItem
-{
-    std::string Name;
-    int32 Value;
-};
+struct FMyItem { std::string Name; int32 Value; };
 
-// Create list view
 std::vector<FMyItem> Items;
 for (int i = 0; i < 1000; ++i)
-{
     Items.push_back({"Item " + std::to_string(i), i});
-}
 
 auto ListView = ZSlate::CreateListView<FMyItem>(
     std::move(Items),
-    [](const FMyItem& Item, int32 Index, const std::shared_ptr<ZSlate::SListView<FMyItem>>& ListView) {
+    [](const FMyItem& Item, int32 Index, const std::shared_ptr<ZSlate::SListView<FMyItem>>& L) {
         auto Row = std::make_shared<ZSlate::SHorizontalBox>();
-        
         auto IndexText = std::make_shared<ZSlate::STextBlock>();
         IndexText->Text = "[" + std::to_string(Index) + "] ";
         IndexText->FontSize = 14.0f;
@@ -132,23 +181,10 @@ auto ListView = ZSlate::CreateListView<FMyItem>(
         NameText->Text = Item.Name;
         NameText->FontSize = 14.0f;
         Row->AddSlot(NameText);
-        
         return Row;
     },
-    ZSlate::SListView<FMyItem>::FListViewOptions{
-        .ItemHeight = 24.0f,
-        .ScrollBarColor = ZSlate::Colors::Gray
-    }
+    ZSlate::SListView<FMyItem>::FListViewOptions{.ItemHeight = 24.0f}
 );
-
-// Set selection callback
-ListView->SetOnSelectionChanged([](const std::vector<int32>& SelectedIndices) {
-    if (!SelectedIndices.empty())
-        std::cout << "Selected: " << SelectedIndices.front() << std::endl;
-});
-
-// Scroll to a specific item
-ListView->ScrollToItem(500);
 ```
 
 ## Type Reference

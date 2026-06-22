@@ -1,9 +1,9 @@
 #pragma once
 
-#include "ZSlate/Widgets/SBorder.h"
-#include "ZSlate/Widgets/SBoxPanel.h"
+#include "ZSlate/Widgets/Panels/SBorder.h"
+#include "ZSlate/Widgets/Layout/SBoxPanel.h"
 #include "ZSlate/Widgets/SCompoundWidget.h"
-#include "ZSlate/Widgets/STextBlock.h"
+#include "ZSlate/Widgets/Text/STextBlock.h"
 
 #include <algorithm>
 #include <functional>

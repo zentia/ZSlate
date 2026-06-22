@@ -1,4 +1,4 @@
-#include "ZSlate/Widgets/SBoxPanel.h"
+#include "ZSlate/Widgets/Layout/SBoxPanel.h"
 
 namespace ZSlate
 {

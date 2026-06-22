@@ -3,7 +3,7 @@
 #include "ZSlate/Core/SlateGeometry.h"
 #include "ZSlate/Widgets/SLeafWidget.h"
 #include "ZSlate/Application/SlateInput.h"
-#include "ZSlate/Core/SlateClipboard.h"  // clipboard callbacks (no GLFW dep)
+#include "ZSlate/Core/SlateClipboard.h"
 
 #include <algorithm>
 #include <functional>
@@ -39,7 +39,7 @@ public:
     UIColor FocusBorderColor {0.36f, 0.62f, 0.96f, 1.0f};
     UIColor TextColor {0.92f, 0.93f, 0.96f, 1.0f};
     UIColor HintColor {0.45f, 0.46f, 0.52f, 1.0f};
-    UIColor SelectionColor {0.25f, 0.50f, 0.90f, 0.50f};  // selection highlight
+    UIColor SelectionColor {0.25f, 0.50f, 0.90f, 0.50f};
 
     std::function<void(const std::string&)> OnTextChanged;
     std::function<void(const std::string&)> OnTextCommitted;
@@ -80,7 +80,6 @@ public:
             size_t sel_start, sel_end;
             GetSelectionRange(sel_start, sel_end);
 
-            // Measure text up to selection start and end
             std::string text_before_sel = Text.substr(0, sel_start);
             std::string sel_text = Text.substr(sel_start, sel_end - sel_start);
 
@@ -88,7 +87,7 @@ public:
             if (!text_before_sel.empty() && m_TextMeasurer)
                 sel_x += m_TextMeasurer->Measure(text_before_sel, FontSize).x;
 
-            float sel_w = FontSize;  // fallback width
+            float sel_w = FontSize;
             if (!sel_text.empty() && m_TextMeasurer)
                 sel_w = m_TextMeasurer->Measure(sel_text, FontSize).x;
 
@@ -129,37 +128,23 @@ public:
     void OnFocusLost() override
     {
         m_Focused = false;
-        m_SelectionStart = std::string::npos;  // clear selection on focus loss
-    }
-
-    void OnMouseMove(const Vector2& screen_pos) override
-    {
-        if (!m_Dragging || !m_Focused)
-            return;
-        // Update caret position based on mouse position
-        // For now, just track that we're dragging
+        m_SelectionStart = std::string::npos;
     }
 
     FReply OnMouseButtonDown(const Vector2& pos, int button) override
     {
-        if (button != 0)  // only left button
+        if (button != 0)
             return FReply::Unhandled();
 
         m_Focused = true;
         m_Dragging = true;
 
-        // Set caret position based on click location
         if (!Text.empty())
-        {
-            // For now, just move caret to end on click
-            m_CaretPos = Text.length();  // simplified: always to end
-        }
+            m_CaretPos = Text.length();
         else
-        {
             m_CaretPos = 0;
-        }
 
-        m_SelectionStart = m_CaretPos;  // start selection
+        m_SelectionStart = m_CaretPos;
 
         return FReply::Handled();
     }
@@ -171,7 +156,6 @@ public:
 
         m_Dragging = false;
 
-        // If selection start == caret pos, clear selection
         if (m_SelectionStart != std::string::npos && m_SelectionStart == m_CaretPos)
             m_SelectionStart = std::string::npos;
 
@@ -180,24 +164,19 @@ public:
 
     void OnKeyChar(unsigned int codepoint) override
     {
-        // UE pattern: swallow Ctrl+ shortcut characters here (Ctrl+A=1, C=3, V=22,
-        // X=24, Z=25, Y=26) so they are NOT inserted as text. The actual shortcut
-        // handling is done in OnKeyDown (which fires for the key-down event).
         if (codepoint >= 1 && codepoint <= 26)
-            return;  // swallow all Ctrl+A..Z control characters
+            return;
         if (codepoint == 127)
-            return;  // DEL (not a printable char)
-
+            return;
         if (codepoint < 32)
-            return;  // other control chars ignored
+            return;
 
-        // Normal character input: delete selection if any, then insert at caret
         DeleteSelectedText();
         std::string utf8_char;
         AppendUtf8(utf8_char, codepoint);
         Text.insert(m_CaretPos, utf8_char);
         m_CaretPos += utf8_char.length();
-        m_SelectionStart = std::string::npos;  // clear selection
+        m_SelectionStart = std::string::npos;
 
         if (OnTextChanged)
             OnTextChanged(Text);
@@ -208,102 +187,61 @@ public:
         if (!m_Focused)
             return FReply::Unhandled();
 
-        // UE pattern: handle Ctrl+ shortcuts in OnKeyDown (not OnKeyChar),
-        // because GLFW may not fire character callback for Ctrl+key combos.
         if (SlateInputRouter::IsCtrlDown())
         {
             switch (key)
             {
-                case EKey::A:  // Ctrl+A: select all
-                    SelectAll();
-                    return FReply::Handled();
-                case EKey::C:  // Ctrl+C: copy
-                    CopyToClipboard();
-                    return FReply::Handled();
-                case EKey::V:  // Ctrl+V: paste
-                    PasteFromClipboard();
-                    return FReply::Handled();
-                case EKey::X:  // Ctrl+X: cut
-                    CutToClipboard();
-                    return FReply::Handled();
-                case EKey::Z:  // Ctrl+Z: undo (future)
-                    return FReply::Handled();
-                case EKey::Y:  // Ctrl+Y: redo (future)
-                    return FReply::Handled();
-                default:
-                    break;
+                case EKey::A: SelectAll(); return FReply::Handled();
+                case EKey::C: CopyToClipboard(); return FReply::Handled();
+                case EKey::V: PasteFromClipboard(); return FReply::Handled();
+                case EKey::X: CutToClipboard(); return FReply::Handled();
+                default: break;
             }
         }
 
-        // Non-Ctrl keys
         switch (key)
         {
             case EKey::Backspace:
-                if (HasSelection())
-                {
-                    DeleteSelectedText();
-                    if (OnTextChanged)
-                        OnTextChanged(Text);
-                }
+                if (HasSelection()) { DeleteSelectedText(); }
                 else if (!Text.empty() && m_CaretPos > 0)
                 {
                     size_t char_start = GetPreviousCharStart(m_CaretPos);
                     Text.erase(char_start, m_CaretPos - char_start);
                     m_CaretPos = char_start;
                     m_SelectionStart = std::string::npos;
-                    if (OnTextChanged)
-                        OnTextChanged(Text);
+                    if (OnTextChanged) OnTextChanged(Text);
                 }
                 return FReply::Handled();
 
             case EKey::Delete:
-                if (HasSelection())
-                {
-                    DeleteSelectedText();
-                    if (OnTextChanged)
-                        OnTextChanged(Text);
-                }
+                if (HasSelection()) { DeleteSelectedText(); }
                 else if (!Text.empty() && m_CaretPos < Text.length())
                 {
                     size_t char_end = GetNextCharStart(m_CaretPos);
                     Text.erase(m_CaretPos, char_end - m_CaretPos);
                     m_SelectionStart = std::string::npos;
-                    if (OnTextChanged)
-                        OnTextChanged(Text);
+                    if (OnTextChanged) OnTextChanged(Text);
                 }
                 return FReply::Handled();
 
             case EKey::Enter:
-                if (OnTextCommitted)
-                    OnTextCommitted(Text);
+                if (OnTextCommitted) OnTextCommitted(Text);
                 return FReply::Handled();
 
             case EKey::Left:
                 if (SlateInputRouter::IsShiftDown())
-                {
-                    if (m_SelectionStart == std::string::npos)
-                        m_SelectionStart = m_CaretPos;
-                }
+                    if (m_SelectionStart == std::string::npos) m_SelectionStart = m_CaretPos;
                 else
-                {
                     m_SelectionStart = std::string::npos;
-                }
-                if (m_CaretPos > 0)
-                    m_CaretPos = GetPreviousCharStart(m_CaretPos);
+                if (m_CaretPos > 0) m_CaretPos = GetPreviousCharStart(m_CaretPos);
                 return FReply::Handled();
 
             case EKey::Right:
                 if (SlateInputRouter::IsShiftDown())
-                {
-                    if (m_SelectionStart == std::string::npos)
-                        m_SelectionStart = m_CaretPos;
-                }
+                    if (m_SelectionStart == std::string::npos) m_SelectionStart = m_CaretPos;
                 else
-                {
                     m_SelectionStart = std::string::npos;
-                }
-                if (m_CaretPos < Text.length())
-                    m_CaretPos = GetNextCharStart(m_CaretPos);
+                if (m_CaretPos < Text.length()) m_CaretPos = GetNextCharStart(m_CaretPos);
                 return FReply::Handled();
 
             case EKey::Home:
@@ -321,7 +259,6 @@ public:
         }
     }
 
-    // Clipboard operations
     bool HasSelection() const
     {
         return m_SelectionStart != std::string::npos && m_SelectionStart != m_CaretPos;
@@ -340,8 +277,7 @@ public:
 
     std::string GetSelectedText() const
     {
-        if (!HasSelection())
-            return "";
+        if (!HasSelection()) return "";
         size_t start, end;
         GetSelectionRange(start, end);
         return Text.substr(start, end - start);
@@ -349,8 +285,7 @@ public:
 
     void DeleteSelectedText()
     {
-        if (!HasSelection())
-            return;
+        if (!HasSelection()) return;
         size_t start, end;
         GetSelectionRange(start, end);
         Text.erase(start, end - start);
@@ -370,58 +305,37 @@ public:
     void CopyToClipboard()
     {
         std::string selected = GetSelectedText();
-        if (selected.empty())
-            return;
-        if (GSlateSetClipboard)
-            GSlateSetClipboard(selected.c_str(), GSlateClipboardUserData);
+        if (selected.empty()) return;
+        if (GSlateSetClipboard) GSlateSetClipboard(selected.c_str(), GSlateClipboardUserData);
     }
 
     void CutToClipboard()
     {
         std::string selected = GetSelectedText();
-        if (selected.empty())
-            return;
-        if (GSlateSetClipboard)
-            GSlateSetClipboard(selected.c_str(), GSlateClipboardUserData);
-
+        if (selected.empty()) return;
+        if (GSlateSetClipboard) GSlateSetClipboard(selected.c_str(), GSlateClipboardUserData);
         DeleteSelectedText();
-        if (OnTextChanged)
-            OnTextChanged(Text);
+        if (OnTextChanged) OnTextChanged(Text);
     }
 
     void PasteFromClipboard()
     {
-        if (!GSlateGetClipboard)
-            return;
+        if (!GSlateGetClipboard) return;
         const char* clipboard_text = GSlateGetClipboard(GSlateClipboardUserData);
         if (clipboard_text != nullptr && *clipboard_text != '\0')
         {
             DeleteSelectedText();
-
             std::string paste_text(clipboard_text);
             Text.insert(m_CaretPos, paste_text);
             m_CaretPos += paste_text.length();
             m_SelectionStart = std::string::npos;
-
-            if (OnTextChanged)
-                OnTextChanged(Text);
+            if (OnTextChanged) OnTextChanged(Text);
         }
     }
 
-    // For external access to trigger clipboard operations
-    void OnCopy() { CopyToClipboard(); }
-    void OnCut() { CutToClipboard(); }
-    void OnPaste() { PasteFromClipboard(); }
-
-    bool IsFocused() const { return m_Focused; }
-
-private:
     static void AppendUtf8(std::string& s, unsigned int cp)
     {
-        if (cp < 0x80)
-        {
-            s.push_back(static_cast<char>(cp));
-        }
+        if (cp < 0x80) s.push_back(static_cast<char>(cp));
         else if (cp < 0x800)
         {
             s.push_back(static_cast<char>(0xC0 | (cp >> 6)));
@@ -442,60 +356,34 @@ private:
         }
     }
 
-    static void PopUtf8(std::string& s)
-    {
-        if (s.empty())
-            return;
-        size_t i = s.size();
-        do
-        {
-            --i;
-        } while (i > 0 && (static_cast<unsigned char>(s[i]) & 0xC0) == 0x80);
-        s.erase(i);
-    }
-
-    // Get the byte offset of the previous UTF-8 character start
     size_t GetPreviousCharStart(size_t pos) const
     {
-        if (pos == 0)
-            return 0;
+        if (pos == 0) return 0;
         size_t i = pos;
-        do
-        {
-            --i;
-        } while (i > 0 && (static_cast<unsigned char>(Text[i]) & 0xC0) == 0x80);
+        do { --i; } while (i > 0 && (static_cast<unsigned char>(Text[i]) & 0xC0) == 0x80);
         return i;
     }
 
-    // Get the byte offset of the next UTF-8 character start
     size_t GetNextCharStart(size_t pos) const
     {
-        if (pos >= Text.length())
-            return Text.length();
-        // Skip continuation bytes
+        if (pos >= Text.length()) return Text.length();
         while (pos < Text.length() && (static_cast<unsigned char>(Text[pos]) & 0xC0) == 0x80)
             ++pos;
-        // Move to next character start
         if (pos < Text.length())
         {
             unsigned char c = static_cast<unsigned char>(Text[pos]);
-            if (c < 0x80)
-                return pos + 1;
-            else if ((c & 0xE0) == 0xC0)
-                return pos + 2;
-            else if ((c & 0xF0) == 0xE0)
-                return pos + 3;
-            else if ((c & 0xF8) == 0xF0)
-                return pos + 4;
+            if (c < 0x80) return pos + 1;
+            else if ((c & 0xE0) == 0xC0) return pos + 2;
+            else if ((c & 0xF0) == 0xE0) return pos + 3;
+            else if ((c & 0xF8) == 0xF0) return pos + 4;
         }
         return Text.length();
     }
 
     bool m_Focused {false};
-    size_t m_CaretPos;           // caret position (UTF-8 byte offset)
-    size_t m_SelectionStart;      // selection anchor (UTF-8 byte offset), npos = no selection
-    bool m_Dragging;             // true while left button is held
-
+    size_t m_CaretPos;
+    size_t m_SelectionStart;
+    bool m_Dragging {false};
     ISlateTextMeasurer* m_TextMeasurer {nullptr};
 };
 }  // namespace ZSlate
