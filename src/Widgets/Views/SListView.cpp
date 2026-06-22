@@ -9,14 +9,16 @@ namespace ZSlate
 // SListView Implementation
 // ============================================================================
 
-Vector2 SListView<int32_t>::ComputeDesiredSize() const
+template<typename ItemType>
+Vector2 SListView<ItemType>::ComputeDesiredSize() const
 {
     // Estimate based on visible items
     float Height = std::max(m_CachedGeometry.LocalSize.y, GetMaxScrollOffset() + m_CachedGeometry.LocalSize.y);
     return Vector2(300.0f, Height);
 }
 
-void SListView<int32_t>::ArrangeChildren(const FGeometry& allotted, std::vector<FArrangedWidget>& out) const
+template<typename ItemType>
+void SListView<ItemType>::ArrangeChildren(const FGeometry& allotted, std::vector<FArrangedWidget>& out) const
 {
     UpdateVisibleItems();
     
@@ -32,14 +34,15 @@ void SListView<int32_t>::ArrangeChildren(const FGeometry& allotted, std::vector<
         
         FArrangedWidget Arranged;
         Arranged.Widget = VisibleItem.Widget;
-        Arranged.Geometry = FGeometry(UIRect(X, Y, Rect.width - Options.Padding.Left - Options.Padding.Right, ItemHeight), allotted);
+        Arranged.Geometry = FGeometry(UIRect(X, Y, Rect.w - Options.Padding.Left - Options.Padding.Right, ItemHeight), allotted);
         
         out.push_back(Arranged);
         Y += ItemHeight;
     }
 }
 
-void SListView<int32_t>::OnPaint(const FPaintContext& ctx, const FGeometry& geom) const
+template<typename ItemType>
+void SListView<ItemType>::OnPaint(const FPaintContext& ctx, const FGeometry& geom) const
 {
     if (ctx.Renderer == nullptr)
         return;
@@ -53,7 +56,7 @@ void SListView<int32_t>::OnPaint(const FPaintContext& ctx, const FGeometry& geom
     }
     
     // Update visible items
-    UpdateVisibleItems();
+    const_cast<SListView<ItemType>*>(this)->UpdateVisibleItems();
     
     // Draw selection and hover backgrounds
     const float ViewTop = m_ScrollOffset;
@@ -69,14 +72,14 @@ void SListView<int32_t>::OnPaint(const FPaintContext& ctx, const FGeometry& geom
         if (bIsSelected)
         {
             ctx.Renderer->drawRect(UIRect(Rect.x + Options.Padding.Left, Rect.y + ItemTop,
-                                           Rect.width - Options.Padding.Left - Options.Padding.Right,
+                                           Rect.w - Options.Padding.Left - Options.Padding.Right,
                                            GetItemHeight(VisibleItem.Index)),
                                     Options.SelectedBackgroundColor);
         }
         else if (bIsHovered)
         {
             ctx.Renderer->drawRect(UIRect(Rect.x + Options.Padding.Left, Rect.y + ItemTop,
-                                           Rect.width - Options.Padding.Left - Options.Padding.Right,
+                                           Rect.w - Options.Padding.Left - Options.Padding.Right,
                                            GetItemHeight(VisibleItem.Index)),
                                     Options.HoveredBackgroundColor);
         }
@@ -84,13 +87,13 @@ void SListView<int32_t>::OnPaint(const FPaintContext& ctx, const FGeometry& geom
     
     // Draw scrollbar if content overflows
     float TotalHeight = CalculateTotalHeight();
-    float ViewHeight = Rect.height;
+    float ViewHeight = Rect.h;
     
     if (TotalHeight > ViewHeight)
     {
-        float ScrollbarX = Rect.x + Rect.width - Options.ScrollBarWidth;
+        float ScrollbarX = Rect.x + Rect.w - Options.ScrollBarWidth;
         float ScrollbarY = Rect.y + Options.Padding.Top;
-        float ScrollbarH = Rect.height - Options.Padding.Top - Options.Padding.Bottom;
+        float ScrollbarH = Rect.h - Options.Padding.Top - Options.Padding.Bottom;
         
         // Track background
         ctx.Renderer->drawRect(UIRect(ScrollbarX, ScrollbarY, Options.ScrollBarWidth, ScrollbarH),
@@ -105,14 +108,16 @@ void SListView<int32_t>::OnPaint(const FPaintContext& ctx, const FGeometry& geom
     }
 }
 
-FReply SListView<int32_t>::OnMouseWheel(const Vector2& pos, float delta)
+template<typename ItemType>
+FReply SListView<ItemType>::OnMouseWheel(const Vector2& pos, float delta)
 {
     m_ScrollOffset -= delta * 24.0f;
     ClampScrollOffset();
     return FReply::Handled();
 }
 
-FReply SListView<int32_t>::OnMouseButtonDown(const Vector2& pos, int button)
+template<typename ItemType>
+FReply SListView<ItemType>::OnMouseButtonDown(const Vector2& pos, int button)
 {
     if (button == 0) // Left button
     {
@@ -147,7 +152,8 @@ FReply SListView<int32_t>::OnMouseButtonDown(const Vector2& pos, int button)
     return FReply::Unhandled();
 }
 
-void SListView<int32_t>::OnMouseMove(const Vector2& pos)
+template<typename ItemType>
+void SListView<ItemType>::OnMouseMove(const Vector2& pos)
 {
     const Vector2 LocalPos = pos - m_CachedGeometry.AbsolutePosition;
     
@@ -178,7 +184,8 @@ void SListView<int32_t>::OnMouseMove(const Vector2& pos)
     }
 }
 
-FReply SListView<int32_t>::OnMouseButtonUp(const Vector2& pos, int button)
+template<typename ItemType>
+FReply SListView<ItemType>::OnMouseButtonUp(const Vector2& pos, int button)
 {
     if (button == 0)
     {
@@ -187,11 +194,13 @@ FReply SListView<int32_t>::OnMouseButtonUp(const Vector2& pos, int button)
     return FReply::Handled();
 }
 
-void SListView<int32_t>::OnMouseCaptureLost()
+template<typename ItemType>
+void SListView<ItemType>::OnMouseCaptureLost()
 {
     m_DraggingThumb = false;
 }
 
+// Explicit instantiation
 template class SListView<int32_t>;
 
 }  // namespace ZSlate
