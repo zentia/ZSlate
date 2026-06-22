@@ -240,6 +240,10 @@ private:
     mutable bool m_CursorVisible {true};
     
     ISlateTextMeasurer* m_TextMeasurer {nullptr};
+
+public:
+    // Callbacks
+    std::function<void(const std::string&)> OnTextChanged;
 };
 
 // ============================================================================

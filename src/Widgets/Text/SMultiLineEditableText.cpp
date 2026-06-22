@@ -122,7 +122,7 @@ void SMultiLineEditableText::InsertTextAtCursor(const std::string& InText)
     DeleteSelection();
     
     // Split input into lines
-    std::vector<std::string> NewLines = SplitIntoLines(InText);
+    std::vector<FTextLineInfo> NewLines = SplitIntoLines(InText);
     
     // Insert at cursor position
     int32_t InsertLine = CursorLocation.LineIndex;
@@ -136,13 +136,14 @@ void SMultiLineEditableText::InsertTextAtCursor(const std::string& InText)
     // Erase old line and insert new lines
     Lines.erase(Lines.begin() + InsertLine);
     
-    // Insert new lines
+    // Insert new lines (NewLines is already std::vector<FTextLineInfo>)
     std::vector<FTextLineInfo> NewLineInfos;
-    for (const std::string& NewLine : NewLines)
+    for (size_t i = 0; i < NewLines.size(); ++i)
     {
-        FTextLineInfo Info(BeforeCursor + NewLine);
+        const std::string& NewLineText = (i == 0) ? (BeforeCursor + NewLines[i].Text) : NewLines[i].Text;
+        FTextLineInfo Info(NewLineText);
         NewLineInfos.push_back(Info);
-        BeforeCursor.clear();  // Only first line gets before-cursor text
+        if (i == 0) BeforeCursor.clear();  // Only first line gets before-cursor text
     }
     
     // Add remaining after-cursor text to last new line
