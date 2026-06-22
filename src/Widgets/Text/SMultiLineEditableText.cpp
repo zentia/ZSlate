@@ -588,7 +588,7 @@ void SMultiLineEditableText::DrawSelection(const FPaintContext& ctx, const FGeom
     
     const UIRect Rect = geom.ToRect();
     const float ViewTop = ScrollOffsetY;
-    const float ViewBottom = ViewTop + Rect.height;
+    const float ViewBottom = ViewTop + Rect.h;
     
     for (int32_t Line = Start.LineIndex; Line <= End.LineIndex; ++Line)
     {
@@ -601,7 +601,7 @@ void SMultiLineEditableText::DrawSelection(const FPaintContext& ctx, const FGeom
         
         // Calculate selection rectangle
         float SelLeft = Rect.x + Options.Padding.Left;
-        float SelRight = Rect.x + Rect.width - Options.Padding.Right;
+        float SelRight = Rect.x + Rect.w - Options.Padding.Right;
         float SelTop = Rect.y + LineTop - ViewTop + Options.Padding.Top;
         float SelBottom = Rect.y + LineBottom - ViewTop - Options.Padding.Bottom;
         
@@ -623,7 +623,7 @@ void SMultiLineEditableText::DrawSelection(const FPaintContext& ctx, const FGeom
         
         // Clamp to visible area
         if (SelTop < Rect.y) SelTop = Rect.y;
-        if (SelBottom > Rect.y + Rect.height) SelBottom = Rect.y + Rect.height;
+        if (SelBottom > Rect.y + Rect.h) SelBottom = Rect.y + Rect.h;
         
         ctx.Renderer->drawQuad(UIRect(SelLeft, SelTop, SelRight - SelLeft, SelBottom - SelTop), Options.SelectionColor);
     }
@@ -645,8 +645,8 @@ void SMultiLineEditableText::DrawText(const FPaintContext& ctx, const FGeometry&
         const UIRect TextRect(
             Rect.x + Options.Padding.Left,
             Rect.y + Options.Padding.Top,
-            Rect.width - Options.Padding.GetTotalHorizontal(),
-            Rect.height - Options.Padding.GetTotalVertical()
+            Rect.w - Options.Padding.GetTotalHorizontal(),
+            Rect.h - Options.Padding.GetTotalVertical()
         );
         
         ctx.Renderer->drawText(TextRect, HintText, Options.FontSize, Options.HintColor, 
@@ -656,7 +656,7 @@ void SMultiLineEditableText::DrawText(const FPaintContext& ctx, const FGeometry&
     
     const UIRect Rect = geom.ToRect();
     const float ViewTop = ScrollOffsetY;
-    const float ViewBottom = ViewTop + Rect.height;
+    const float ViewBottom = ViewTop + Rect.h;
     
     for (int32_t Line = 0; Line < GetNumLines(); ++Line)
     {
@@ -676,7 +676,7 @@ void SMultiLineEditableText::DrawText(const FPaintContext& ctx, const FGeometry&
         UIRect TextRect(
             Rect.x + Options.Padding.Left,
             Rect.y + VisibleTop - ViewTop + Options.Padding.Top,
-            Rect.width - Options.Padding.GetTotalHorizontal(),
+            Rect.w - Options.Padding.GetTotalHorizontal(),
             VisibleBottom - VisibleTop
         );
         
@@ -718,7 +718,7 @@ void SMultiLineEditableText::DrawCursor(const FPaintContext& ctx, const FGeometr
 void SMultiLineEditableText::DrawScrollBar(const FPaintContext& ctx, const FGeometry& geom) const
 {
     const UIRect Rect = geom.ToRect();
-    const float ViewHeight = Rect.height;
+    const float ViewHeight = Rect.h;
     const float ContentHeight = GetContentHeight();
     
     float ThumbSize = GetScrollBarThumbSize();
@@ -726,7 +726,7 @@ void SMultiLineEditableText::DrawScrollBar(const FPaintContext& ctx, const FGeom
     
     if (ThumbSize <= 0.0f) return;
     
-    ctx.Renderer->drawQuad(UIRect(Rect.x + Rect.width - Options.ScrollBarColor.GetTotalHorizontal(),
+    ctx.Renderer->drawQuad(UIRect(Rect.x + Rect.w - Options.ScrollBarColor.GetTotalHorizontal(),
                                    Rect.y + ThumbPos,
                                    Options.ScrollBarColor,
                                    ThumbSize),
@@ -758,7 +758,7 @@ float SMultiLineEditableText::GetScrollBarThumbSize() const
 void SMultiLineEditableText::ApplyThumbDrag(float PointerY, const UIRect& Rect)
 {
     float ContentHeight = GetContentHeight();
-    float ViewHeight = Rect.height;
+    float ViewHeight = Rect.h;
     
     if (ContentHeight <= ViewHeight) return;
     
@@ -830,12 +830,12 @@ FReply SMultiLineEditableText::OnMouseButtonDown(const Vector2& pos, int button)
     
     const float ContentHeight = GetContentHeight();
     const UIRect Rect = m_CachedGeometry.ToRect();
-    const float ViewHeight = Rect.height;
+    const float ViewHeight = Rect.h;
     
     if (ContentHeight > ViewHeight)
     {
         const float Band = std::max(Options.ScrollBarColor.GetTotalHorizontal(), 12.0f);
-        if (pos.x >= Rect.x + Rect.width - Band)
+        if (pos.x >= Rect.x + Rect.w - Band)
         {
             // Click on scrollbar
             float ThumbSize = GetScrollBarThumbSize();

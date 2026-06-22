@@ -324,8 +324,8 @@ public:
 
         const UIRect text_rect(rect.x + Padding.Left,
                                rect.y + Padding.Top,
-                               rect.width - Padding.GetTotalHorizontal(),
-                               rect.height - Padding.GetTotalVertical());
+                               rect.w - Padding.GetTotalHorizontal(),
+                               rect.h - Padding.GetTotalVertical());
 
         // Draw selection highlight
         if (HasSelection() && ctx.Renderer != nullptr)
@@ -345,7 +345,7 @@ public:
                 sel_w = m_TextMeasurer->Measure(sel_text, FontSize).x;
 
             ctx.Renderer->drawQuad(
-                UIRect(sel_x, text_rect.y, std::max(sel_w, 1.0f), text_rect.height),
+                UIRect(sel_x, text_rect.y, std::max(sel_w, 1.0f), text_rect.h),
                 SelectionColor);
         }
 
@@ -371,7 +371,7 @@ public:
                 caret_x += m_TextMeasurer->Measure(text_before_caret, FontSize).x;
             }
             const float caret_h = FontSize;
-            const float caret_y = text_rect.y + (text_rect.height - caret_h) * 0.5f;
+            const float caret_y = text_rect.y + (text_rect.h - caret_h) * 0.5f;
             ctx.Renderer->drawQuad(UIRect(caret_x + 1.0f, caret_y, 1.5f, caret_h), TextColor);
         }
     }
