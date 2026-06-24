@@ -167,7 +167,7 @@ std::vector<FRichTextLine> FRichTextParser::Parse(const std::string& Text, float
                     }
                     else if (TagNameLower == "br")
                     {
-                        // Line break - flush current run and start new line
+                        // Line break - Flush current run and start new line
                         if (!TextBuffer.empty())
                         {
                             FRichTextRun Run = CurrentState;
@@ -576,7 +576,7 @@ void SRichTextBlock::PaintRun(const FPaintContext& ctx, const Vector2& Position,
     case ERichTextTagType::Hyperlink:
         {
             // Draw hyperlink text with underline
-            ctx.Renderer->drawText(UIRect(Position.x, Position.y, 0, Run.FontSize),
+            ctx.Renderer->DrawText(UIRect(Position.x, Position.y, 0, Run.FontSize),
                                     Run.HyperlinkText, Run.FontSize, Run.Color,
                                     TextAnchor::MiddleLeft, TextWrapMode::NoWrap, nullptr);
 
@@ -585,7 +585,7 @@ void SRichTextBlock::PaintRun(const FPaintContext& ctx, const Vector2& Position,
                 ? m_TextMeasurer->Measure(Run.HyperlinkText, Run.FontSize).x
                 : static_cast<float>(Run.HyperlinkText.size()) * Run.FontSize * 0.5f;
 
-            ctx.Renderer->drawRect(UIRect(Position.x, Position.y + Run.FontSize * 0.85f,
+            ctx.Renderer->DrawRect(UIRect(Position.x, Position.y + Run.FontSize * 0.85f,
                                            TextWidth, 1.0f),
                                     Run.Color);
         }
@@ -594,7 +594,7 @@ void SRichTextBlock::PaintRun(const FPaintContext& ctx, const Vector2& Position,
     default:
         if (!Run.Text.empty())
         {
-            ctx.Renderer->drawText(UIRect(Position.x, Position.y, 0, Run.FontSize),
+            ctx.Renderer->DrawText(UIRect(Position.x, Position.y, 0, Run.FontSize),
                                     Run.Text, Run.FontSize, Run.Color,
                                     TextAnchor::MiddleLeft, TextWrapMode::NoWrap, nullptr);
 
@@ -605,7 +605,7 @@ void SRichTextBlock::PaintRun(const FPaintContext& ctx, const Vector2& Position,
                     ? m_TextMeasurer->Measure(Run.Text, Run.FontSize).x
                     : static_cast<float>(Run.Text.size()) * Run.FontSize * 0.5f;
 
-                ctx.Renderer->drawRect(UIRect(Position.x, Position.y + Run.FontSize * 0.5f,
+                ctx.Renderer->DrawRect(UIRect(Position.x, Position.y + Run.FontSize * 0.5f,
                                                TextWidth, 1.0f),
                                         Run.Color);
             }
@@ -617,7 +617,7 @@ void SRichTextBlock::PaintRun(const FPaintContext& ctx, const Vector2& Position,
                     ? m_TextMeasurer->Measure(Run.Text, Run.FontSize).x
                     : static_cast<float>(Run.Text.size()) * Run.FontSize * 0.5f;
 
-                ctx.Renderer->drawRect(UIRect(Position.x, Position.y + Run.FontSize * 0.85f,
+                ctx.Renderer->DrawRect(UIRect(Position.x, Position.y + Run.FontSize * 0.85f,
                                                TextWidth, 1.0f),
                                         Run.Color);
             }

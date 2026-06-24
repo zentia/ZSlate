@@ -12,27 +12,27 @@ ZEngineSlateRenderer::ZEngineSlateRenderer(::UiGpuResources* gpu_resources, UIRe
 {
 }
 
-void ZEngineSlateRenderer::drawQuad(const UIRect& rect, const UIColor& color)
+void ZEngineSlateRenderer::DrawQuad(const UIRect& rect, const UIColor& color)
 {
     if (!m_Renderer)
         return;
 
     ::UIRect ui_rect(rect.x, rect.y, rect.w, rect.h);
     ::UIColor ui_color(color.x, color.y, color.z, color.w);
-    m_Renderer->drawQuad(ui_rect, ui_color);
+    m_Renderer->DrawQuad(ui_rect, ui_color);
 }
 
-void ZEngineSlateRenderer::drawRect(const UIRect& rect, const UIColor& color, float thickness)
+void ZEngineSlateRenderer::DrawRect(const UIRect& rect, const UIColor& color, float thickness)
 {
     if (!m_Renderer)
         return;
 
     ::UIRect ui_rect(rect.x, rect.y, rect.w, rect.h);
     ::UIColor ui_color(color.x, color.y, color.z, color.w);
-    m_Renderer->drawRect(ui_rect, ui_color, thickness);
+    m_Renderer->DrawRect(ui_rect, ui_color, thickness);
 }
 
-void ZEngineSlateRenderer::drawConvexPoly(const Vector2* points, int count, const UIColor& color)
+void ZEngineSlateRenderer::DrawConvexPoly(const Vector2* points, int count, const UIColor& color)
 {
     if (!m_Renderer || count < 3)
         return;
@@ -44,56 +44,56 @@ void ZEngineSlateRenderer::drawConvexPoly(const Vector2* points, int count, cons
         ui_points[i] = ::Vector2(points[i].x, points[i].y);
     }
     ::UIColor ui_color(color.x, color.y, color.z, color.w);
-    m_Renderer->drawConvexPoly(ui_points.data(), count, ui_color);
+    m_Renderer->DrawConvexPoly(ui_points.data(), count, ui_color);
 }
 
-void ZEngineSlateRenderer::drawRoundedRect(const UIRect& rect, float radius, const UIColor& color)
+void ZEngineSlateRenderer::DrawRoundedRect(const UIRect& rect, float radius, const UIColor& color)
 {
-    // UIRenderer doesn't have drawRoundedRect, so we approximate with drawQuad
+    // UIRenderer doesn't have DrawRoundedRect, so we approximate with DrawQuad
     // TODO: Implement proper rounded rect rendering
     if (!m_Renderer)
         return;
 
     ::UIRect ui_rect(rect.x, rect.y, rect.w, rect.h);
     ::UIColor ui_color(color.x, color.y, color.z, color.w);
-    m_Renderer->drawQuad(ui_rect, ui_color);
+    m_Renderer->DrawQuad(ui_rect, ui_color);
 }
 
-void ZEngineSlateRenderer::drawTexturedQuad(const UIRect& rect, void* texture_handle, const UIColor& tint)
+void ZEngineSlateRenderer::DrawTexturedQuad(const UIRect& rect, void* texture_handle, const UIColor& tint)
 {
     if (!m_Renderer)
         return;
 
     ::UIRect ui_rect(rect.x, rect.y, rect.w, rect.h);
     ::UIColor ui_tint(tint.x, tint.y, tint.z, tint.w);
-    m_Renderer->drawTexturedQuad(ui_rect, texture_handle, ui_tint);
+    m_Renderer->DrawTexturedQuad(ui_rect, texture_handle, ui_tint);
 }
 
-void ZEngineSlateRenderer::drawBox(const UIRect& rect, const FMargin& margin, void* texture_handle, const UIColor& tint)
+void ZEngineSlateRenderer::DrawBox(const UIRect& rect, const FMargin& margin, void* texture_handle, const UIColor& tint)
 {
-    // UIRenderer doesn't have drawBox, so we draw a textured quad for now
+    // UIRenderer doesn't have DrawBox, so we draw a textured quad for now
     // TODO: Implement proper 9-slice drawing
     if (!m_Renderer)
         return;
 
     ::UIRect ui_rect(rect.x, rect.y, rect.w, rect.h);
     ::UIColor ui_tint(tint.x, tint.y, tint.z, tint.w);
-    m_Renderer->drawTexturedQuad(ui_rect, texture_handle, ui_tint);
+    m_Renderer->DrawTexturedQuad(ui_rect, texture_handle, ui_tint);
 }
 
-void ZEngineSlateRenderer::drawBorder(const UIRect& rect, const FMargin& margin, void* texture_handle, const UIColor& tint)
+void ZEngineSlateRenderer::DrawBorder(const UIRect& rect, const FMargin& margin, void* texture_handle, const UIColor& tint)
 {
-    // UIRenderer doesn't have drawBorder, so we draw a rect outline for now
+    // UIRenderer doesn't have DrawBorder, so we draw a rect outline for now
     // TODO: Implement proper border drawing
     if (!m_Renderer)
         return;
 
     ::UIRect ui_rect(rect.x, rect.y, rect.w, rect.h);
     ::UIColor ui_tint(tint.x, tint.y, tint.z, tint.w);
-    m_Renderer->drawRect(ui_rect, ui_tint, 1.0f);
+    m_Renderer->DrawRect(ui_rect, ui_tint, 1.0f);
 }
 
-void ZEngineSlateRenderer::drawText(const UIRect& rect, const std::string& text, float font_size, const UIColor& color,
+void ZEngineSlateRenderer::DrawText(const UIRect& rect, const std::string& text, float font_size, const UIColor& color,
                                     TextAnchor alignment, TextWrapMode wrap, void* font_handle)
 {
     if (!m_Renderer)
@@ -107,57 +107,57 @@ void ZEngineSlateRenderer::drawText(const UIRect& rect, const std::string& text,
     // Convert font_handle back to ZEngine's font system handle if needed
     uint32_t font_id = font_handle ? static_cast<uint32_t>(reinterpret_cast<uintptr_t>(font_handle)) : 0;
 
-    m_Renderer->drawText(ui_rect, text, font_size, ui_color, ui_align, ui_wrap, nullptr);
+    m_Renderer->DrawText(ui_rect, text, font_size, ui_color, ui_align, ui_wrap, nullptr);
 }
 
-void ZEngineSlateRenderer::drawText(const std::string& text, const Vector2& pos, float font_size, const UIColor& color)
+void ZEngineSlateRenderer::DrawText(const std::string& text, const Vector2& pos, float font_size, const UIColor& color)
 {
     // Convert to rect-based call for simplicity
-    drawText(UIRect(pos.x, pos.y, 0, 0), text, font_size, color, TextAnchor::MiddleLeft);
+    DrawText(UIRect(pos.x, pos.y, 0, 0), text, font_size, color, TextAnchor::MiddleLeft);
 }
 
-Vector2 ZEngineSlateRenderer::measureText(const std::string& text, float font_size) const
+Vector2 ZEngineSlateRenderer::MeasureText(const std::string& text, float font_size) const
 {
     if (!m_Renderer)
         return Vector2(0, font_size);
 
-    ::Vector2 result = m_Renderer->measureText(text, font_size);
+    ::Vector2 result = m_Renderer->MeasureText(text, font_size);
     return Vector2(result.x, result.y);
 }
 
-void ZEngineSlateRenderer::pushClipRect(const UIRect& rect)
+void ZEngineSlateRenderer::PushClipRect(const UIRect& rect)
 {
     if (!m_Renderer)
         return;
 
     ::UIRect ui_rect(rect.x, rect.y, rect.w, rect.h);
-    m_Renderer->pushClipRect(ui_rect);
+    m_Renderer->PushClipRect(ui_rect);
 }
 
-void ZEngineSlateRenderer::popClipRect()
+void ZEngineSlateRenderer::PopClipRect()
 {
     if (!m_Renderer)
         return;
 
-    m_Renderer->popClipRect();
+    m_Renderer->PopClipRect();
 }
 
-void ZEngineSlateRenderer::beginFrame()
+void ZEngineSlateRenderer::BeginFrame()
 {
     if (m_Renderer)
-        m_Renderer->beginFrame();
+        m_Renderer->BeginFrame();
 }
 
-void ZEngineSlateRenderer::endFrame()
+void ZEngineSlateRenderer::EndFrame()
 {
     if (m_Renderer)
-        m_Renderer->endFrame();
+        m_Renderer->EndFrame();
 }
 
-void ZEngineSlateRenderer::flush()
+void ZEngineSlateRenderer::Flush()
 {
-    // UIRenderer doesn't have a flush method, so this is a no-op
-    // If needed, we could call m_Renderer->endFrame() here, but that's not quite right
+    // UIRenderer doesn't have a Flush method, so this is a no-op
+    // If needed, we could call m_Renderer->EndFrame() here, but that's not quite right
 }
 
 }  // namespace ZSlate

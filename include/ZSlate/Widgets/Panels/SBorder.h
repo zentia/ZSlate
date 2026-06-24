@@ -35,7 +35,7 @@ public:
         {
             const UIRect rect = geom.ToRect();
             if (DrawBackground)
-                ctx.Renderer->drawQuad(rect, BackgroundColor);
+                ctx.Renderer->DrawQuad(rect, BackgroundColor);
             if (m_Child)
                 m_Child->Paint(ctx, geom);
         }

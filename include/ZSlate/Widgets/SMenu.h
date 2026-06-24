@@ -51,7 +51,7 @@ public:
 
         const UIRect rect = geom.ToRect();
         if (m_Hovered && !Disabled)
-            ctx.Renderer->drawQuad(rect, HoverColor);
+            ctx.Renderer->DrawQuad(rect, HoverColor);
 
         const float gutter = MarkerGutter();
         if (gutter <= 0.0f)
@@ -61,7 +61,7 @@ public:
         if (HasSubMenu)
         {
             // ZSlate::UIRect uses .w/.h (not .width/.height)
-            ctx.Renderer->drawText(UIRect(rect.x + rect.w - gutter, rect.y, gutter, rect.h),
+            ctx.Renderer->DrawText(UIRect(rect.x + rect.w - gutter, rect.y, gutter, rect.h),
                                    ">", FontSize, mark, TextAnchor::MiddleCenter, TextWrapMode::NoWrap, nullptr);
         }
         else if (ShowCheck)
@@ -71,16 +71,16 @@ public:
             const float my = rect.y + (rect.h - s) * 0.5f;
             if (Checked)
             {
-                ctx.Renderer->drawQuad(UIRect(mx, my, s, s), mark);
+                ctx.Renderer->DrawQuad(UIRect(mx, my, s, s), mark);
             }
             else
             {
                 // Hollow box so off-state is visible (font has no check glyph).
                 const float t = std::max(1.0f, s * 0.18f);
-                ctx.Renderer->drawQuad(UIRect(mx, my, s, t), mark);
-                ctx.Renderer->drawQuad(UIRect(mx, my + s - t, s, t), mark);
-                ctx.Renderer->drawQuad(UIRect(mx, my, t, s), mark);
-                ctx.Renderer->drawQuad(UIRect(mx + s - t, my, t, s), mark);
+                ctx.Renderer->DrawQuad(UIRect(mx, my, s, t), mark);
+                ctx.Renderer->DrawQuad(UIRect(mx, my + s - t, s, t), mark);
+                ctx.Renderer->DrawQuad(UIRect(mx, my, t, s), mark);
+                ctx.Renderer->DrawQuad(UIRect(mx + s - t, my, t, s), mark);
             }
         }
     }

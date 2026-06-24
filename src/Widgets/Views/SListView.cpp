@@ -52,7 +52,7 @@ void SListView<ItemType>::OnPaint(const FPaintContext& ctx, const FGeometry& geo
     // Draw background
     if (Options.BackgroundColor.w > 0.0f)
     {
-        ctx.Renderer->drawRect(Rect, Options.BackgroundColor);
+        ctx.Renderer->DrawRect(Rect, Options.BackgroundColor);
     }
     
     // Update visible items
@@ -71,14 +71,14 @@ void SListView<ItemType>::OnPaint(const FPaintContext& ctx, const FGeometry& geo
         
         if (bIsSelected)
         {
-            ctx.Renderer->drawRect(UIRect(Rect.x + Options.Padding.Left, Rect.y + ItemTop,
+            ctx.Renderer->DrawRect(UIRect(Rect.x + Options.Padding.Left, Rect.y + ItemTop,
                                            Rect.w - Options.Padding.Left - Options.Padding.Right,
                                            GetItemHeight(VisibleItem.Index)),
                                     Options.SelectedBackgroundColor);
         }
         else if (bIsHovered)
         {
-            ctx.Renderer->drawRect(UIRect(Rect.x + Options.Padding.Left, Rect.y + ItemTop,
+            ctx.Renderer->DrawRect(UIRect(Rect.x + Options.Padding.Left, Rect.y + ItemTop,
                                            Rect.w - Options.Padding.Left - Options.Padding.Right,
                                            GetItemHeight(VisibleItem.Index)),
                                     Options.HoveredBackgroundColor);
@@ -96,14 +96,14 @@ void SListView<ItemType>::OnPaint(const FPaintContext& ctx, const FGeometry& geo
         float ScrollbarH = Rect.h - Options.Padding.Top - Options.Padding.Bottom;
         
         // Track background
-        ctx.Renderer->drawRect(UIRect(ScrollbarX, ScrollbarY, Options.ScrollBarWidth, ScrollbarH),
+        ctx.Renderer->DrawRect(UIRect(ScrollbarX, ScrollbarY, Options.ScrollBarWidth, ScrollbarH),
                                UIColor(0.2f, 0.2f, 0.2f, 0.5f));
         
         // Thumb
         float ThumbSize = (ViewHeight / TotalHeight) * ScrollbarH;
         float ThumbPos = (m_ScrollOffset / TotalHeight) * ScrollbarH;
         
-        ctx.Renderer->drawRect(UIRect(ScrollbarX, ScrollbarY + ThumbPos, Options.ScrollBarWidth, ThumbSize),
+        ctx.Renderer->DrawRect(UIRect(ScrollbarX, ScrollbarY + ThumbPos, Options.ScrollBarWidth, ThumbSize),
                                Options.ScrollBarColor);
     }
 }

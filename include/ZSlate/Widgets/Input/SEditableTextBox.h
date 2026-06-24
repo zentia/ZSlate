@@ -43,12 +43,12 @@ public:
         if (ctx.Renderer)
         {
             const UIRect rect = geom.ToRect();
-            ctx.Renderer->drawQuad(rect, UIColor(0.15f, 0.15f, 0.18f, 1.0f));
+            ctx.Renderer->DrawQuad(rect, UIColor(0.15f, 0.15f, 0.18f, 1.0f));
             const std::string& display = Text.empty() ? HintText : Text;
             const UIColor displayColor = Text.empty() ? UIColor(0.5f, 0.5f, 0.55f, 1.0f) : UIColor(0.9f, 0.9f, 0.9f, 1.0f);
             if (!display.empty())
             {
-                ctx.Renderer->drawText(UIRect(rect.x + 6.0f, rect.y, rect.w - 12.0f, rect.h),
+                ctx.Renderer->DrawText(UIRect(rect.x + 6.0f, rect.y, rect.w - 12.0f, rect.h),
                                        display, FontSize, displayColor,
                                        TextAnchor::MiddleLeft, TextWrapMode::NoWrap);
             }

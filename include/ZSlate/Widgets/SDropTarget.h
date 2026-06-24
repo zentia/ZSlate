@@ -32,7 +32,7 @@ public:
     void OnPaint(const FPaintContext& ctx, const FGeometry& geom) const override
     {
         if (DrawHighlight && m_DropHovered && ctx.Renderer != nullptr)
-            ctx.Renderer->drawRect(geom.ToRect(), DropHighlightColor, 2.0f);
+            ctx.Renderer->DrawRect(geom.ToRect(), DropHighlightColor, 2.0f);
     }
 
     FReply OnDragOver(const Vector2& /*screen_pos*/, const std::shared_ptr<FDragDropOperation>& op) override

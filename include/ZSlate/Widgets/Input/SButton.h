@@ -56,10 +56,10 @@ public:
         else if (m_Hovered)
             color = HoverColor;
 
-        ctx.Renderer->drawQuad(geom.ToRect(), color);
+        ctx.Renderer->DrawQuad(geom.ToRect(), color);
 
         if (m_DropHovered)
-            ctx.Renderer->drawRect(geom.ToRect(), DropHighlightColor, 2.0f);
+            ctx.Renderer->DrawRect(geom.ToRect(), DropHighlightColor, 2.0f);
     }
 
     void OnMouseEnter() override { m_Hovered = true; }

@@ -288,7 +288,7 @@ public:
     {
         if (ctx.Renderer == nullptr || Text.empty())
             return;
-        ctx.Renderer->drawText(geom.ToRect(), Text, FontSize, Color, Alignment, TextWrapMode::NoWrap, nullptr);
+        ctx.Renderer->DrawText(geom.ToRect(), Text, FontSize, Color, Alignment, TextWrapMode::NoWrap, nullptr);
     }
 
     ISlateTextMeasurer* m_TextMeasurer {nullptr};
@@ -339,8 +339,8 @@ public:
         if (ctx.Renderer == nullptr)
             return;
         const UIRect rect = geom.ToRect();
-        ctx.Renderer->drawQuad(rect, BackgroundColor);
-        ctx.Renderer->drawRect(rect, m_Focused ? FocusBorderColor : BorderColor, 1.0f);
+        ctx.Renderer->DrawQuad(rect, BackgroundColor);
+        ctx.Renderer->DrawRect(rect, m_Focused ? FocusBorderColor : BorderColor, 1.0f);
 
         const UIRect text_rect(rect.x + Padding.Left,
                                rect.y + Padding.Top,
@@ -364,7 +364,7 @@ public:
             if (!sel_text.empty() && m_TextMeasurer)
                 sel_w = m_TextMeasurer->Measure(sel_text, FontSize).x;
 
-            ctx.Renderer->drawQuad(
+            ctx.Renderer->DrawQuad(
                 UIRect(sel_x, text_rect.y, std::max(sel_w, 1.0f), text_rect.h),
                 SelectionColor);
         }
@@ -372,12 +372,12 @@ public:
         // Draw text
         if (Text.empty() && !m_Focused && !HintText.empty())
         {
-            ctx.Renderer->drawText(text_rect, HintText, FontSize, HintColor, TextAnchor::MiddleLeft,
+            ctx.Renderer->DrawText(text_rect, HintText, FontSize, HintColor, TextAnchor::MiddleLeft,
                                    TextWrapMode::NoWrap, nullptr);
         }
         else if (!Text.empty())
         {
-            ctx.Renderer->drawText(text_rect, Text, FontSize, TextColor, TextAnchor::MiddleLeft,
+            ctx.Renderer->DrawText(text_rect, Text, FontSize, TextColor, TextAnchor::MiddleLeft,
                                    TextWrapMode::NoWrap, nullptr);
         }
 
@@ -392,7 +392,7 @@ public:
             }
             const float caret_h = FontSize;
             const float caret_y = text_rect.y + (text_rect.h - caret_h) * 0.5f;
-            ctx.Renderer->drawQuad(UIRect(caret_x + 1.0f, caret_y, 1.5f, caret_h), TextColor);
+            ctx.Renderer->DrawQuad(UIRect(caret_x + 1.0f, caret_y, 1.5f, caret_h), TextColor);
         }
     }
 

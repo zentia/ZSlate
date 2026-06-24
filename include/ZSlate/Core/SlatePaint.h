@@ -21,31 +21,31 @@ struct ISlateRenderer
     virtual ~ISlateRenderer() = default;
 
     // Drawing primitives
-    virtual void drawQuad(const UIRect& rect, const UIColor& color) = 0;
-    virtual void drawRect(const UIRect& rect, const UIColor& color, float thickness = 1.0f) = 0;
-    virtual void drawConvexPoly(const Vector2* points, int count, const UIColor& color) = 0;
-    virtual void drawRoundedRect(const UIRect& rect, float radius, const UIColor& color) = 0;
-    virtual void drawTexturedQuad(const UIRect& rect, void* texture_handle, const UIColor& tint = Colors::White) = 0;
-    virtual void drawBox(const UIRect& rect, const FMargin& margin, void* texture_handle, const UIColor& tint) = 0;
-    virtual void drawBorder(const UIRect& rect, const FMargin& margin, void* texture_handle, const UIColor& tint) = 0;
+    virtual void DrawQuad(const UIRect& rect, const UIColor& color) = 0;
+    virtual void DrawRect(const UIRect& rect, const UIColor& color, float thickness = 1.0f) = 0;
+    virtual void DrawConvexPoly(const Vector2* points, int count, const UIColor& color) = 0;
+    virtual void DrawRoundedRect(const UIRect& rect, float radius, const UIColor& color) = 0;
+    virtual void DrawTexturedQuad(const UIRect& rect, void* texture_handle, const UIColor& tint = Colors::White) = 0;
+    virtual void DrawBox(const UIRect& rect, const FMargin& margin, void* texture_handle, const UIColor& tint) = 0;
+    virtual void DrawBorder(const UIRect& rect, const FMargin& margin, void* texture_handle, const UIColor& tint) = 0;
 
     // Text
     // Overload 1: draw into a rect with alignment (used by most widgets)
-    virtual void drawText(const UIRect& rect, const std::string& text, float font_size, const UIColor& color,
+    virtual void DrawText(const UIRect& rect, const std::string& text, float font_size, const UIColor& color,
                           TextAnchor alignment = TextAnchor::MiddleLeft, TextWrapMode wrap = TextWrapMode::NoWrap,
                           void* font_handle = nullptr) = 0;
     // Overload 2: draw at position (legacy API)
-    virtual void drawText(const std::string& text, const Vector2& pos, float font_size, const UIColor& color) = 0;
-    virtual Vector2 measureText(const std::string& text, float font_size) const = 0;
+    virtual void DrawText(const std::string& text, const Vector2& pos, float font_size, const UIColor& color) = 0;
+    virtual Vector2 MeasureText(const std::string& text, float font_size) const = 0;
 
     // Clipping
-    virtual void pushClipRect(const UIRect& rect) = 0;
-    virtual void popClipRect() = 0;
+    virtual void PushClipRect(const UIRect& rect) = 0;
+    virtual void PopClipRect() = 0;
 
     // State
-    virtual void beginFrame() = 0;
-    virtual void endFrame() = 0;
-    virtual void flush() = 0;
+    virtual void BeginFrame() = 0;
+    virtual void EndFrame() = 0;
+    virtual void Flush() = 0;
 };
 
 // ============================================================================
@@ -64,7 +64,7 @@ struct FPaintContext
 // ============================================================================
 // ComputeDesiredSize() runs before painting, so it cannot reach a live
 // UIRenderer frame; instead SlateApplication installs a measurer that
-// forwards to ISlateRenderer::measureText (or the editor font atlas).
+// forwards to ISlateRenderer::MeasureText (or the editor font atlas).
 class ISlateTextMeasurer
 {
 public:
@@ -81,14 +81,14 @@ struct ISlateFontService
     virtual ~ISlateFontService() = default;
 
     // Load a font by name. Returns handle for text drawing.
-    virtual void* loadFont(const std::string& font_path, float size) = 0;
-    virtual void unloadFont(void* handle) = 0;
+    virtual void* LoadFont(const std::string& font_path, float size) = 0;
+    virtual void UnloadFont(void* handle) = 0;
 
     // Measure text using the given font handle.
-    virtual Vector2 measureText(void* font_handle, const std::string& text) const = 0;
+    virtual Vector2 MeasureText(void* font_handle, const std::string& text) const = 0;
 
     // Get default font handle (set by host).
-    virtual void* getDefaultFont() const = 0;
+    virtual void* GetDefaultFont() const = 0;
 };
 
 // ============================================================================
@@ -99,20 +99,20 @@ struct ISlatePlatform
     virtual ~ISlatePlatform() = default;
 
     // Renderer
-    virtual ISlateRenderer* getRenderer() = 0;
+    virtual ISlateRenderer* GetRenderer() = 0;
 
     // Font service
-    virtual ISlateFontService* getFontService() = 0;
+    virtual ISlateFontService* GetFontService() = 0;
 
     // Input (host pumps these each frame)
-    virtual Vector2 getMousePosition() const = 0;
-    virtual bool isMouseButtonDown(int button) const = 0;
-    virtual bool isKeyDown(int key) const = 0;
-    virtual float getTimeSeconds() const = 0;
+    virtual Vector2 GetMousePosition() const = 0;
+    virtual bool IsMouseButtonDown(int button) const = 0;
+    virtual bool IsKeyDown(int key) const = 0;
+    virtual float GetTimeSeconds() const = 0;
 
     // Window (for DPI, etc.)
-    virtual Vector2 getWindowSize() const = 0;
-    virtual float getDpiScale() const { return 1.0f; }
+    virtual Vector2 GetWindowSize() const = 0;
+    virtual float GetDpiScale() const { return 1.0f; }
 };
 
 // ============================================================================

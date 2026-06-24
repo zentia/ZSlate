@@ -39,78 +39,78 @@ struct MockRenderer : public ZSlate::ISlateRenderer
 {
     int m_DrawCallCount {0};
     
-    void drawQuad(const ZSlate::UIRect& rect, const ZSlate::UIColor& color) override
+    void DrawQuad(const ZSlate::UIRect& rect, const ZSlate::UIColor& color) override
     {
         m_DrawCallCount++;
         // In a real implementation, you would:
         // 1. Create a quad vertex buffer
         // 2. Set the color
         // 3. Submit to your render queue
-        printf("[drawQuad] rect=(%.1f, %.1f, %.1f, %.1f) color=(%.2f, %.2f, %.2f, %.2f)\n",
+        printf("[DrawQuad] rect=(%.1f, %.1f, %.1f, %.1f) color=(%.2f, %.2f, %.2f, %.2f)\n",
             rect.x, rect.y, rect.w, rect.h,
             color.x, color.y, color.z, color.w);
     }
 
-    void drawRect(const ZSlate::UIRect& rect, const ZSlate::UIColor& color, float thickness = 1.0f) override
+    void DrawRect(const ZSlate::UIRect& rect, const ZSlate::UIColor& color, float thickness = 1.0f) override
     {
         m_DrawCallCount++;
-        printf("[drawRect] rect=(%.1f, %.1f, %.1f, %.1f) thickness=%.1f\n",
+        printf("[DrawRect] rect=(%.1f, %.1f, %.1f, %.1f) thickness=%.1f\n",
             rect.x, rect.y, rect.w, rect.h, thickness);
     }
 
-    void drawConvexPoly(const ZSlate::Vector2* points, int count, const ZSlate::UIColor& color) override
+    void DrawConvexPoly(const ZSlate::Vector2* points, int count, const ZSlate::UIColor& color) override
     {
         m_DrawCallCount++;
-        printf("[drawConvexPoly] %d points\n", count);
+        printf("[DrawConvexPoly] %d points\n", count);
     }
 
-    void drawRoundedRect(const ZSlate::UIRect& rect, float radius, const ZSlate::UIColor& color) override
+    void DrawRoundedRect(const ZSlate::UIRect& rect, float radius, const ZSlate::UIColor& color) override
     {
         m_DrawCallCount++;
-        printf("[drawRoundedRect] rect=(%.1f, %.1f, %.1f, %.1f) radius=%.1f\n",
+        printf("[DrawRoundedRect] rect=(%.1f, %.1f, %.1f, %.1f) radius=%.1f\n",
             rect.x, rect.y, rect.w, rect.h, radius);
     }
 
-    void drawTexturedQuad(const ZSlate::UIRect& rect, void* texture_handle, const ZSlate::UIColor& tint = ZSlate::Colors::White) override
+    void DrawTexturedQuad(const ZSlate::UIRect& rect, void* texture_handle, const ZSlate::UIColor& tint = ZSlate::Colors::White) override
     {
         m_DrawCallCount++;
-        printf("[drawTexturedQuad] rect=(%.1f, %.1f, %.1f, %.1f) texture=%p\n",
+        printf("[DrawTexturedQuad] rect=(%.1f, %.1f, %.1f, %.1f) texture=%p\n",
             rect.x, rect.y, rect.w, rect.h, texture_handle);
     }
 
-    void drawBox(const ZSlate::UIRect& rect, const ZSlate::FMargin& margin, void* texture_handle, const ZSlate::UIColor& tint) override
+    void DrawBox(const ZSlate::UIRect& rect, const ZSlate::FMargin& margin, void* texture_handle, const ZSlate::UIColor& tint) override
     {
         m_DrawCallCount++;
-        printf("[drawBox] rect=(%.1f, %.1f, %.1f, %.1f) margin=(%.1f, %.1f, %.1f, %.1f)\n",
+        printf("[DrawBox] rect=(%.1f, %.1f, %.1f, %.1f) margin=(%.1f, %.1f, %.1f, %.1f)\n",
             rect.x, rect.y, rect.w, rect.h,
             margin.left, margin.top, margin.right, margin.bottom);
     }
 
-    void drawBorder(const ZSlate::UIRect& rect, const ZSlate::FMargin& margin, void* texture_handle, const ZSlate::UIColor& tint) override
+    void DrawBorder(const ZSlate::UIRect& rect, const ZSlate::FMargin& margin, void* texture_handle, const ZSlate::UIColor& tint) override
     {
         m_DrawCallCount++;
-        printf("[drawBorder] rect=(%.1f, %.1f, %.1f, %.1f)\n",
+        printf("[DrawBorder] rect=(%.1f, %.1f, %.1f, %.1f)\n",
             rect.x, rect.y, rect.w, rect.h);
     }
 
-    void drawText(const ZSlate::UIRect& rect, const std::string& text, float font_size, const ZSlate::UIColor& color,
+    void DrawText(const ZSlate::UIRect& rect, const std::string& text, float font_size, const ZSlate::UIColor& color,
                   ZSlate::TextAnchor alignment = ZSlate::TextAnchor::MiddleLeft,
                   ZSlate::TextWrapMode wrap = ZSlate::TextWrapMode::NoWrap,
                   void* font_handle = nullptr) override
     {
         m_DrawCallCount++;
-        printf("[drawText] \"%s\" at rect=(%.1f, %.1f, %.1f, %.1f) size=%.1f alignment=%d\n",
+        printf("[DrawText] \"%s\" at rect=(%.1f, %.1f, %.1f, %.1f) size=%.1f alignment=%d\n",
             text.c_str(), rect.x, rect.y, rect.w, rect.h, font_size, static_cast<int>(alignment));
     }
 
-    void drawText(const std::string& text, const ZSlate::Vector2& pos, float font_size, const ZSlate::UIColor& color) override
+    void DrawText(const std::string& text, const ZSlate::Vector2& pos, float font_size, const ZSlate::UIColor& color) override
     {
         m_DrawCallCount++;
-        printf("[drawText] \"%s\" at (%.1f, %.1f) size=%.1f\n",
+        printf("[DrawText] \"%s\" at (%.1f, %.1f) size=%.1f\n",
             text.c_str(), pos.x, pos.y, font_size);
     }
 
-    ZSlate::Vector2 measureText(const std::string& text, float font_size) const override
+    ZSlate::Vector2 MeasureText(const std::string& text, float font_size) const override
     {
         // Rough estimate based on average character width
         // In a real implementation, query your font atlas
@@ -118,31 +118,31 @@ struct MockRenderer : public ZSlate::ISlateRenderer
         return ZSlate::Vector2(text.size() * avg_char_width, font_size * 1.2f);
     }
 
-    void pushClipRect(const ZSlate::UIRect& rect) override
+    void PushClipRect(const ZSlate::UIRect& rect) override
     {
-        printf("[pushClipRect] (%.1f, %.1f, %.1f, %.1f)\n",
+        printf("[PushClipRect] (%.1f, %.1f, %.1f, %.1f)\n",
             rect.x, rect.y, rect.w, rect.h);
     }
 
-    void popClipRect() override
+    void PopClipRect() override
     {
-        printf("[popClipRect]\n");
+        printf("[PopClipRect]\n");
     }
 
-    void beginFrame() override 
+    void BeginFrame() override 
     { 
         m_DrawCallCount = 0;
         printf("========== Frame Begin ==========\n");
     }
     
-    void endFrame() override 
+    void EndFrame() override 
     { 
         printf("========== Frame End ==========\n");
     }
     
-    void flush() override 
+    void Flush() override 
     { 
-        printf("[flush] Total draw calls: %d\n", m_DrawCallCount);
+        printf("[Flush] Total draw calls: %d\n", m_DrawCallCount);
     }
 };
 
@@ -169,7 +169,7 @@ struct MockFontService : public ZSlate::ISlateFontService
         // In a real implementation, release the font resources
     }
 
-    ZSlate::Vector2 measureText(void* font_handle, const std::string& text) const override
+    ZSlate::Vector2 MeasureText(void* font_handle, const std::string& text) const override
     {
         float avg_char_width = 10.0f; // Placeholder
         return ZSlate::Vector2(text.size() * avg_char_width, 14.0f);
@@ -226,10 +226,10 @@ public:
         if (ctx.Renderer == nullptr) return;
         
         // Draw color preview
-        ctx.Renderer->drawQuad(geom.ToRect(), Color);
+        ctx.Renderer->DrawQuad(geom.ToRect(), Color);
         
         // Draw border
-        ctx.Renderer->drawRect(geom.ToRect(), ZSlate::Colors::Black, 1.0f);
+        ctx.Renderer->DrawRect(geom.ToRect(), ZSlate::Colors::Black, 1.0f);
     }
 
     ZSlate::ECursorType GetCursor() const override 
@@ -420,15 +420,15 @@ public:
     void RunFrame()
     {
         // Begin frame
-        m_Platform.Renderer.beginFrame();
+        m_Platform.Renderer.BeginFrame();
         
         // Paint UI
         ZSlate::UIRect region(0, 0, m_Platform.getWindowSize().x, m_Platform.getWindowSize().y);
         ZSlate::SlateApplication::Get().PaintInto(&m_Platform.Renderer, region);
         
         // End frame
-        m_Platform.Renderer.endFrame();
-        m_Platform.Renderer.flush();
+        m_Platform.Renderer.EndFrame();
+        m_Platform.Renderer.Flush();
     }
 };
 

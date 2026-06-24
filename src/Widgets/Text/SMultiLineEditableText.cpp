@@ -573,8 +573,8 @@ void SMultiLineEditableText::OnPaint(const FPaintContext& ctx, const FGeometry& 
 void SMultiLineEditableText::DrawBackground(const FPaintContext& ctx, const FGeometry& geom) const
 {
     const UIRect Rect = geom.ToRect();
-    ctx.Renderer->drawQuad(Rect, Options.BackgroundColor);
-    ctx.Renderer->drawRect(Rect, m_HasFocus ? Options.FocusBorderColor : Options.BorderColor, 1.0f);
+    ctx.Renderer->DrawQuad(Rect, Options.BackgroundColor);
+    ctx.Renderer->DrawRect(Rect, m_HasFocus ? Options.FocusBorderColor : Options.BorderColor, 1.0f);
 }
 
 void SMultiLineEditableText::DrawSelection(const FPaintContext& ctx, const FGeometry& geom) const
@@ -626,7 +626,7 @@ void SMultiLineEditableText::DrawSelection(const FPaintContext& ctx, const FGeom
         if (SelTop < Rect.y) SelTop = Rect.y;
         if (SelBottom > Rect.y + Rect.h) SelBottom = Rect.y + Rect.h;
         
-        ctx.Renderer->drawQuad(UIRect(SelLeft, SelTop, SelRight - SelLeft, SelBottom - SelTop), Options.SelectionColor);
+        ctx.Renderer->DrawQuad(UIRect(SelLeft, SelTop, SelRight - SelLeft, SelBottom - SelTop), Options.SelectionColor);
     }
 }
 
@@ -650,7 +650,7 @@ void SMultiLineEditableText::DrawText(const FPaintContext& ctx, const FGeometry&
             Rect.h - Options.Padding.GetTotalVertical()
         );
         
-        ctx.Renderer->drawText(TextRect, HintText, Options.FontSize, Options.HintColor, 
+        ctx.Renderer->DrawText(TextRect, HintText, Options.FontSize, Options.HintColor, 
                                TextAnchor::UpperLeft, TextWrapMode::NoWrap, nullptr);
         return;
     }
@@ -688,7 +688,7 @@ void SMultiLineEditableText::DrawText(const FPaintContext& ctx, const FGeometry&
             DisplayText = std::string(LineText.length(), '*');
         }
         
-        ctx.Renderer->drawText(TextRect, DisplayText, Options.FontSize, Options.TextColor,
+        ctx.Renderer->DrawText(TextRect, DisplayText, Options.FontSize, Options.TextColor,
                                TextAnchor::UpperLeft, TextWrapMode::NoWrap, nullptr);
     }
 }
@@ -713,7 +713,7 @@ void SMultiLineEditableText::DrawCursor(const FPaintContext& ctx, const FGeometr
     float CursorHeight = GetLineHeight(CursorLocation.LineIndex) - Options.Padding.GetTotalVertical();
     
     // Draw vertical cursor line
-    ctx.Renderer->drawRect(UIRect(CursorX, CursorY, 2.0f, CursorHeight), Options.CursorColor, 1.0f);
+    ctx.Renderer->DrawRect(UIRect(CursorX, CursorY, 2.0f, CursorHeight), Options.CursorColor, 1.0f);
 }
 
 void SMultiLineEditableText::DrawScrollBar(const FPaintContext& ctx, const FGeometry& geom) const
@@ -727,7 +727,7 @@ void SMultiLineEditableText::DrawScrollBar(const FPaintContext& ctx, const FGeom
     
     if (ThumbSize <= 0.0f) return;
     
-    ctx.Renderer->drawQuad(UIRect(Rect.x + Rect.w - Options.ScrollBarColor.x - Options.ScrollBarColor.z,
+    ctx.Renderer->DrawQuad(UIRect(Rect.x + Rect.w - Options.ScrollBarColor.x - Options.ScrollBarColor.z,
                                    Rect.y + ThumbPos,
                                    Options.ScrollBarColor.x + Options.ScrollBarColor.z,
                                    ThumbSize),

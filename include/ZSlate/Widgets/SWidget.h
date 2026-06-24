@@ -79,14 +79,14 @@ public:
 
         const bool clip = ClipsContent() && ctx.Renderer != nullptr;
         if (clip)
-            ctx.Renderer->pushClipRect(geom.ToRect());
+            ctx.Renderer->PushClipRect(geom.ToRect());
         for (const FArrangedWidget& aw : arranged)
         {
             if (aw.Widget)
                 aw.Widget->Paint(ctx, aw.Geometry);
         }
         if (clip)
-            ctx.Renderer->popClipRect();
+            ctx.Renderer->PopClipRect();
     }
 
     // Override to clip children to this widget's geometry (scroll views, etc.).

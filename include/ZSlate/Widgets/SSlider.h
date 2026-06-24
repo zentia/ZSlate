@@ -19,10 +19,10 @@ public:
     void OnPaint(const FPaintContext& c, const FGeometry& g) const override {
         if (c.Renderer) {
             const UIRect r = g.ToRect();
-            c.Renderer->drawQuad(r, UIColor(0.12f,0.12f,0.14f,1.0f));
+            c.Renderer->DrawQuad(r, UIColor(0.12f,0.12f,0.14f,1.0f));
             float t = (MaxValue > MinValue) ? (Value - MinValue) / (MaxValue - MinValue) : 0.5f;
             float knob = t * (r.w - HandleWidth) + r.x;
-            c.Renderer->drawQuad(UIRect(knob, r.y + 2.0f, HandleWidth, r.h - 4.0f), UIColor(0.30f,0.55f,0.95f,1.0f));
+            c.Renderer->DrawQuad(UIRect(knob, r.y + 2.0f, HandleWidth, r.h - 4.0f), UIColor(0.30f,0.55f,0.95f,1.0f));
         }
     }
 };

@@ -31,7 +31,7 @@ public:
 
         // Draw background
         UIRect rect = geom.ToRect();
-        ctx.Renderer->drawRect(rect, UIColor(0.2f, 0.2f, 0.2f, 1.0f), 1.0f);
+        ctx.Renderer->DrawRect(rect, UIColor(0.2f, 0.2f, 0.2f, 1.0f), 1.0f);
 
         // Draw thumb
         float thumb_size = 10.0f;
@@ -39,13 +39,13 @@ public:
         if (bIsHorizontal)
         {
             thumb_pos = rect.x + (rect.w - thumb_size) * ((Value - MinValue) / (MaxValue - MinValue + 0.0001f));
-            ctx.Renderer->drawQuad(UIRect(thumb_pos, rect.y + (rect.h - thumb_size) * 0.5f, thumb_size, thumb_size),
+            ctx.Renderer->DrawQuad(UIRect(thumb_pos, rect.y + (rect.h - thumb_size) * 0.5f, thumb_size, thumb_size),
                                    UIColor(0.5f, 0.5f, 0.5f, 1.0f));
         }
         else
         {
             thumb_pos = rect.y + (rect.h - thumb_size) * ((Value - MinValue) / (MaxValue - MinValue + 0.0001f));
-            ctx.Renderer->drawQuad(UIRect(rect.x + (rect.w - thumb_size) * 0.5f, thumb_pos, thumb_size, thumb_size),
+            ctx.Renderer->DrawQuad(UIRect(rect.x + (rect.w - thumb_size) * 0.5f, thumb_pos, thumb_size, thumb_size),
                                    UIColor(0.5f, 0.5f, 0.5f, 1.0f));
         }
     }

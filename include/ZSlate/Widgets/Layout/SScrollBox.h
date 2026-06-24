@@ -23,9 +23,9 @@ public:
     {
         if (m_Child && ctx.Renderer)
         {
-            ctx.Renderer->pushClipRect(geom.ToRect());
+            ctx.Renderer->PushClipRect(geom.ToRect());
             m_Child->Paint(ctx, geom);
-            ctx.Renderer->popClipRect();
+            ctx.Renderer->PopClipRect();
         }
     }
 };
