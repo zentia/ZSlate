@@ -7,7 +7,7 @@
 #include "ZSlate/Core/SlatePaint.h"
 
 // Forward declare ZEngine types to avoid including heavy headers
-class UiGpuResources;
+class UIGpuResources;
 class UIRenderer;
 
 namespace ZSlate
@@ -17,7 +17,7 @@ namespace ZSlate
 class ZEngineSlateRenderer : public ISlateRenderer
 {
 public:
-    explicit ZEngineSlateRenderer(UiGpuResources* gpu_resources, UIRenderer* renderer);
+    explicit ZEngineSlateRenderer(UIGpuResources* gpu_resources, UIRenderer* renderer);
     ~ZEngineSlateRenderer() override = default;
 
     // ISlateRenderer implementation
@@ -43,7 +43,7 @@ public:
     void Flush() override;
 
 private:
-    UiGpuResources* m_GpuResources;
+    UIGpuResources* m_GpuResources;
     UIRenderer* m_Renderer;
 };
 

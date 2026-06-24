@@ -195,6 +195,14 @@ struct UIRect
     // Operators
     bool operator==(const UIRect& Other) const { return x == Other.x && y == Other.y && w == Other.w && h == Other.h; }
     bool operator!=(const UIRect& Other) const { return !(*this == Other); }
+
+    // ---- Backward-compat aliases (migrating from legacy ::UIRect) ----
+    Vector2 getMin() const { return Position(); }
+    Vector2 getMax() const { return Vector2(Right(), Bottom()); }
+    Vector2 getCenter() const { return Vector2(x + w * 0.5f, y + h * 0.5f); }
+    Vector2 getSize() const { return Size(); }
+    bool Contains(const Vector2& point) const { return Contains(point.x, point.y); }
+    UIRect intersect(const UIRect& other) const { return Intersection(other); }
 };
 
 // ============================================================================
