@@ -54,11 +54,30 @@ public:
     {
         if (button != 0)
             return FReply::Unhandled();
+        m_Dragging = true;
         UpdateValueFromMouse(pos);
-        return FReply::Handled();
+        return FReply::Handled().CaptureMouse(const_cast<SSlider*>(this));
     }
 
+    void OnMouseMove(const Vector2& pos) override
+    {
+        if (!m_Dragging) return;
+        UpdateValueFromMouse(pos);
+    }
+
+    FReply OnMouseButtonUp(const Vector2& /*pos*/, int button) override
+    {
+        if (button != 0 || !m_Dragging)
+            return FReply::Unhandled();
+        m_Dragging = false;
+        return FReply::Handled().ReleaseMouseCapture();
+    }
+
+    void OnMouseCaptureLost() override { m_Dragging = false; }
+
 private:
+    mutable bool m_Dragging {false};
+
     void UpdateValueFromMouse(const Vector2& pos)
     {
         FGeometry geom = GetCachedGeometry();

@@ -33,21 +33,55 @@ public:
 
     void OnPaint(const FPaintContext& ctx, const FGeometry& geom) const override
     {
-        if (ctx.Renderer)
+        if (!ctx.Renderer) return;
+
+        const UIRect rect = geom.ToRect();
+
+        // Hover highlight
+        if (m_Hovered)
+            ctx.Renderer->DrawQuad(rect, UIColor(0.16f, 0.17f, 0.21f, 1.0f));
+
+        // Checkbox square
+        const float sz = BoxSize;
+        const UIRect box(rect.x + 4.0f, rect.y + (rect.h - sz) * 0.5f, sz, sz);
+        UIColor boxColor = Checked ? UIColor(0.30f, 0.55f, 0.95f, 1.0f)
+                                   : UIColor(0.20f, 0.20f, 0.22f, 1.0f);
+        ctx.Renderer->DrawQuad(box, boxColor);
+        ctx.Renderer->DrawRect(box, UIColor(0.35f, 0.38f, 0.45f, 1.0f), 1.0f);
+
+        // Checkmark (simple ✓ cross)
+        if (Checked)
         {
-            const UIRect rect = geom.ToRect();
-            ctx.Renderer->DrawQuad(rect, UIColor(0.12f, 0.12f, 0.14f, 1.0f));
-            const float box_sz = BoxSize;
-            const UIRect box_rect(rect.x + 4.0f, rect.y + (rect.h - box_sz) * 0.5f, box_sz, box_sz);
-            ctx.Renderer->DrawQuad(box_rect, Checked ? UIColor(0.30f, 0.55f, 0.95f, 1.0f) : UIColor(0.20f, 0.20f, 0.22f, 1.0f));
-            if (!Label.empty())
-            {
-                const UIRect label_rect(rect.x + box_sz + 10.0f, rect.y, rect.w - box_sz - 14.0f, rect.h);
-                ctx.Renderer->DrawText(label_rect, Label, 13.0f, UIColor(0.88f, 0.89f, 0.92f, 1.0f),
-                                       TextAnchor::MiddleLeft, TextWrapMode::NoWrap);
-            }
+            float pad = 3.0f;
+            UIRect mark(box.x + pad, box.y + pad, box.w - pad * 2, box.h - pad * 2);
+            ctx.Renderer->DrawText(mark, "\xE2\x9C\x93", sz - 2.0f,
+                                   UIColor(1.0f, 1.0f, 1.0f, 1.0f),
+                                   TextAnchor::MiddleCenter, TextWrapMode::NoWrap);
+        }
+
+        // Label
+        if (!Label.empty())
+        {
+            UIRect lr(rect.x + sz + 10.0f, rect.y, rect.w - sz - 14.0f, rect.h);
+            ctx.Renderer->DrawText(lr, Label, 13.0f, UIColor(0.88f, 0.89f, 0.92f, 1.0f),
+                                   TextAnchor::MiddleLeft, TextWrapMode::NoWrap);
         }
     }
+
+    // Input: click toggles check state
+    void OnMouseEnter() override { m_Hovered = true; }
+    void OnMouseLeave() override { m_Hovered = false; }
+
+    FReply OnMouseButtonDown(const Vector2& /*pos*/, int button) override
+    {
+        if (button != 0) return FReply::Unhandled();
+        Checked = !Checked;
+        if (OnCheckStateChanged) OnCheckStateChanged(Checked);
+        return FReply::Handled();
+    }
+
+private:
+    mutable bool m_Hovered {false};
 };
 
 }  // namespace ZSlate

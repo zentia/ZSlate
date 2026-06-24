@@ -98,9 +98,9 @@ bool ZSlateD3D11Renderer::Init()
     cbd.BindFlags = D3D11_BIND_CONSTANT_BUFFER; cbd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
     m_Device->CreateBuffer(&cbd, nullptr, &m_PerFrameCB);
 
-    // Bilinear sampler — smoother text than point
+    // Point sampler — crisp glyph edges (bilinear smudges font atlas edges)
     D3D11_SAMPLER_DESC samp {};
-    samp.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+    samp.Filter = D3D11_FILTER_MIN_MAG_MIP_POINT;
     samp.AddressU = samp.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
     m_Device->CreateSamplerState(&samp, &m_Sampler);
 
