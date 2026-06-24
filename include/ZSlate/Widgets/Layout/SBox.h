@@ -15,12 +15,14 @@ public:
     float MinDesiredHeight {-1.0f};
     float MaxDesiredWidth {-1.0f};
     float MaxDesiredHeight {-1.0f};
+    EHorizontalAlignment HAlign {EHorizontalAlignment::Center};
+    EVerticalAlignment VAlign {EVerticalAlignment::Center};
 
     Vector2 ComputeDesiredSize() const override
     {
         Vector2 child_size(0.0f, 0.0f);
-        if (m_Content)
-            child_size = m_Content->GetDesiredSize();
+        if (m_Child)
+            child_size = m_Child->ComputeDesiredSize();
 
         float w = child_size.x;
         float h = child_size.y;
@@ -45,15 +47,9 @@ public:
 
     void OnPaint(const FPaintContext& ctx, const FGeometry& geom) const override
     {
-        if (m_Content && ctx.Renderer)
+        if (m_Child && ctx.Renderer)
         {
-            // Create child geometry with the box's allocated size
-            FGeometry child_geom;
-            child_geom.AbsolutePosition = geom.AbsolutePosition;
-            child_geom.LocalSize = geom.LocalSize;
-            ctx.Renderer->pushClipRect(UIRect(geom.AbsolutePosition.x, geom.AbsolutePosition.y, geom.LocalSize.x, geom.LocalSize.y));
-            m_Content->Paint(ctx, child_geom);
-            ctx.Renderer->popClipRect();
+            m_Child->Paint(ctx, geom);
         }
     }
 };

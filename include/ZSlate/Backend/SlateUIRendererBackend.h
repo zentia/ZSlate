@@ -11,8 +11,13 @@ namespace ZSlate
 class SlateUIRendererTextMeasurer : public ISlateTextMeasurer
 {
 public:
+    // Default constructor (renderer set later via SetRenderer)
+    SlateUIRendererTextMeasurer() : m_Renderer(nullptr) {}
+
     explicit SlateUIRendererTextMeasurer(ISlateRenderer* renderer)
         : m_Renderer(renderer) {}
+
+    void SetRenderer(ISlateRenderer* renderer) { m_Renderer = renderer; }
 
     Vector2 Measure(const std::string& text, float font_size) const override
     {

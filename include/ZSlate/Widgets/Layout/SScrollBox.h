@@ -16,15 +16,15 @@ public:
     void AddChild(std::shared_ptr<SWidget> child)
     {
         if (child)
-            m_Content = child;
+            m_Child = child;
     }
 
     void OnPaint(const FPaintContext& ctx, const FGeometry& geom) const override
     {
-        if (m_Content && ctx.Renderer)
+        if (m_Child && ctx.Renderer)
         {
             ctx.Renderer->pushClipRect(geom.ToRect());
-            m_Content->Paint(ctx, geom);
+            m_Child->Paint(ctx, geom);
             ctx.Renderer->popClipRect();
         }
     }

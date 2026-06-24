@@ -34,12 +34,16 @@ public:
     // Called when an accepted drop is released over this button.
     std::function<void(const std::shared_ptr<FDragDropOperation>&)> OnDropHandler;
 
-    SButton()
-    {
-        Padding = FMargin(8.0f, 4.0f);
-        HAlign = EHorizontalAlignment::Center;
-        VAlign = EVerticalAlignment::Center;
-    }
+    // Stub layout properties (UE Slate Padding/HAlign/VAlign analogue).
+    // Accessed by MenuController.cpp, UMG UButton, etc.
+    FMargin Padding {8.0f, 4.0f};
+    EHorizontalAlignment HAlign {EHorizontalAlignment::Center};
+    EVerticalAlignment VAlign {EVerticalAlignment::Center};
+
+    // Make these public so MenuController.cpp can access them.
+    // (In my earlier SButton stub, these were public already due to the struct layout.)
+
+    SButton() = default;
 
     void OnPaint(const FPaintContext& ctx, const FGeometry& geom) const override
     {

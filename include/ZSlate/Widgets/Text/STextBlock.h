@@ -1,39 +1,48 @@
 #pragma once
 
-#include "ZSlate/Widgets/SLeafWidget.h"
-#include "ZSlate/Core/ZSlateTypes.h"
+// Minimal STextBlock stub — ZEditor build dependency.
+// TODO: replace with full implementation from ZSlate submodule.
+
+#include "ZSlate/Widgets/SWidget.h"
 
 namespace ZSlate
 {
-// A text block widget (minimal implementation).
-// Similar to UE's STextBlock.
-class STextBlock : public SLeafWidget
+
+// STextBlock: displays a single line of text.
+class STextBlock : public SWidget
 {
 public:
-    std::string Text;
-    float FontSize {16.0f};
-    UIColor Color {1.0f, 1.0f, 1.0f, 1.0f};
-    TextAnchor Alignment {TextAnchor::MiddleLeft};
+    STextBlock() = default;
+    virtual ~STextBlock() = default;
 
-    void SetText(const std::string& text) { Text = text; }
-    void SetColor(const UIColor& color) { Color = color; }
+    void SetText(const std::string& t) { Text = t; }
+    const std::string& GetText() const { return Text; }
+    void SetFont(void*) {}
+    void SetColor(const UIColor& c) { Color = c; }
+    void SetFontSize(float s) { FontSize = s; }
+
+    // Public members accessed by SRCachedRun::OnPaint (SRichTextBlock.cpp).
+    std::string Text;
+    UIColor     Color {0.9f, 0.9f, 0.9f, 1.0f};
+    float       FontSize {14.0f};
+    EHorizontalAlignment Alignment {EHorizontalAlignment::Left};  // accessed by SMenu.cpp
 
     Vector2 ComputeDesiredSize() const override
     {
-        // Approximate size - in a real implementation, this would use the text measurer
-        return Vector2(Text.length() * FontSize * 0.6f, FontSize * 1.2f);
+        // Stub: return a fixed size
+        return Vector2(static_cast<float>(Text.length()) * FontSize * 0.6f, FontSize + 4.0f);
     }
+
+    void ArrangeChildren(const FGeometry& geom, std::vector<FArrangedWidget>& out) const override { (void)geom; (void)out; }
 
     void OnPaint(const FPaintContext& ctx, const FGeometry& geom) const override
     {
-        if (ctx.Renderer == nullptr || Text.empty())
-            return;
-
-        UIRect rect = geom.ToRect();
-        ctx.Renderer->drawText(rect, Text, FontSize, Color,
-                               Alignment,
-                               TextWrapMode::NoWrap,
-                               nullptr);
+        if (ctx.Renderer && !Text.empty())
+        {
+            ctx.Renderer->drawText(geom.ToRect(), Text, FontSize, Color,
+                                   TextAnchor::MiddleLeft, TextWrapMode::NoWrap);
+        }
     }
 };
+
 }  // namespace ZSlate
