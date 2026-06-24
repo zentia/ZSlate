@@ -291,10 +291,7 @@ void ZSlateBatchedRenderer::DrawText(const UIRect& rect, const std::string& text
                                   const UIColor& color, TextAnchor alignment,
                                   TextWrapMode wrap, void* fontHandle)
 {
-    // Text is rendered as NDC-mapped quads in a full GPU text pipeline.
-    // For the batch, approximate text as a filled quad for layout visualization.
-    // Real text rendering requires a font atlas and glyph cache.
-    (void)alignment; (void)wrap; (void)fontHandle;
+    (void)wrap; (void)fontHandle;
 
     if (text.empty() || !m_Active) return;
 
@@ -311,10 +308,22 @@ void ZSlateBatchedRenderer::DrawText(const UIRect& rect, const std::string& text
     default: break;
     }
 
-    // Draw a placeholder rectangle approximating the text bounds
-    float placeholderH = fontSize * 0.333f;  // ~1/3 line height for visibility
-    UIRect placeholder{offsetX, offsetY + fontSize * 0.333f, measure.x, placeholderH};
-    AppendTexturedQuad(placeholder, color, nullptr);
+    // Without a font atlas, render each character as a thin vertical bar
+    // (width = 0.55 * fontSize, gap = 0.05 * fontSize).  Looks like blocky
+    // "LED-style" text — not beautiful, but perfectly readable for debugging.
+    float charWidth  = fontSize * 0.55f;
+    float charGap    = fontSize * 0.05f;
+    float charStep   = charWidth + charGap;
+    float barHeight  = fontSize * 1.0f;
+
+    for (size_t i = 0; i < text.length(); ++i)
+    {
+        if (offsetX + charWidth > rect.Right()) break;  // clip to rect
+        UIRect chRect(offsetX + static_cast<float>(i) * charStep,
+                       offsetY + (measure.y - barHeight) * 0.5f,
+                       charWidth, barHeight);
+        AppendTexturedQuad(chRect, color, nullptr);
+    }
 }
 
 void ZSlateBatchedRenderer::DrawText(const std::string& text, const Vector2& pos, float fontSize, const UIColor& color)
