@@ -46,7 +46,6 @@ ZSlateBatchedRenderer::ZSlateBatchedRenderer()
     m_Indices.reserve(6144);
     m_Commands.reserve(128);
     m_ClipStack.reserve(16);
-    m_Outlines.reserve(32);
 }
 
 void ZSlateBatchedRenderer::SetFontAtlas(ZSlateFontAtlas* atlas)
@@ -66,7 +65,6 @@ void ZSlateBatchedRenderer::BeginFrame()
     m_Indices.clear();
     m_Commands.clear();
     m_ClipStack.clear();
-    m_Outlines.clear();
     m_CurrentTexture = nullptr;
     m_HasClip = false;
     m_ActiveClip = UIRect{0, 0, 0, 0};
@@ -76,7 +74,6 @@ void ZSlateBatchedRenderer::BeginFrame()
 void ZSlateBatchedRenderer::EndFrame()
 {
     m_Active = false;
-    FlushOutlineCommands();
 }
 
 // ---- Clipping ---------------------------------------------------------------
@@ -193,48 +190,6 @@ void ZSlateBatchedRenderer::AppendTexturedQuad(
         m_Commands.back().IndexCount = static_cast<uint32_t>(m_Indices.size()) - m_Commands.back().IndexOffset;
 }
 
-// ---- Outline accumulation (flushed in EndFrame) -----------------------------
-
-void ZSlateBatchedRenderer::FlushOutlineCommands()
-{
-    if (m_Outlines.empty()) return;
-
-    for (const auto& o : m_Outlines)
-    {
-        if (o.IdxBase + 23 >= m_Indices.size()) continue;
-
-        uint16_t base = o.IdxBase;
-        const ZSBVertex& v0 = m_Vertices[base];
-        uint16_t idx = static_cast<uint16_t>(m_Vertices.size());
-        float t = o.Thickness;
-        float coeff = t * 1.4142f;  // sqrt(2) for corner bevelling
-
-        // Top edge
-        m_Vertices.push_back({ {v0.Pos[0] + t, v0.Pos[1]}, {0, 0}, {v0.Color[0], v0.Color[1], v0.Color[2], v0.Color[3]} });
-        m_Indices.push_back(base);
-        m_Indices.push_back(base + 1);
-        m_Indices.push_back(idx);
-        base++;
-        idx++;
-
-        // Right edge
-        m_Vertices.push_back({ {v0.Pos[0] + coeff, v0.Pos[1] + coeff}, {0, 0}, {v0.Color[0], v0.Color[1], v0.Color[2], v0.Color[3]} });
-        m_Indices.push_back(base);
-        m_Indices.push_back(base + 1);
-        m_Indices.push_back(idx);
-        base = idx;
-        idx++;
-
-        // Bottom edge — simplified: just add the outline as a filled quad for now
-        // For a complete implementation, see ZEngine's UIRenderBatch::appendOutline
-        m_Vertices.push_back({ {v0.Pos[0] + coeff, v0.Pos[1] + coeff}, {0, 0}, {v0.Color[0], v0.Color[1], v0.Color[2], v0.Color[3]} });
-        m_Indices.push_back(base);
-        m_Indices.push_back(base + 1);
-        m_Indices.push_back(idx);
-    }
-    m_Outlines.clear();
-}
-
 // ---- ISlateRenderer implementation ------------------------------------------
 
 void ZSlateBatchedRenderer::DrawQuad(const UIRect& rect, const UIColor& color)
@@ -246,15 +201,9 @@ void ZSlateBatchedRenderer::DrawQuad(const UIRect& rect, const UIColor& color)
 void ZSlateBatchedRenderer::DrawRect(const UIRect& rect, const UIColor& color, float thickness)
 {
     if (!m_Active || thickness <= 0) return;
-
-    // Record as a filled quad first (the outline expands from it in EndFrame)
-    AppendTexturedQuad(rect, color, nullptr);
-
-    if (!m_Commands.empty())
-    {
-        uint16_t idxBase = static_cast<uint16_t>(m_Indices.size()) - 6;  // 6 indices per quad
-        m_Outlines.push_back({ idxBase, thickness });
-    }
+    // Simplified: draw as filled quad (full outline tessellation omitted)
+    (void)thickness;
+    DrawQuad(rect, color);
 }
 
 void ZSlateBatchedRenderer::DrawConvexPoly(const Vector2* points, int count, const UIColor& color)

@@ -116,7 +116,6 @@ private:
                             void* textureId, float u0 = 0, float v0 = 0,
                             float u1 = 1, float v1 = 1);
     void BeginCommand(void* textureId);
-    void FlushOutlineCommands();
 
     std::vector<ZSBVertex>  m_Vertices;
     std::vector<uint16_t>   m_Indices;
@@ -128,10 +127,6 @@ private:
 
     void* m_CurrentTexture {nullptr};
     bool  m_Active {false};
-
-    // Outline (DrawRect) accumulation — deferred until EndFrame
-    struct OutlineCmd { uint16_t IdxBase; float Thickness; };
-    std::vector<OutlineCmd> m_Outlines;
 
     ZSBTextMeasureFunc m_TextMeasurer;
 
