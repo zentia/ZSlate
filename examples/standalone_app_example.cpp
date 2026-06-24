@@ -31,7 +31,9 @@
 #include <chrono>
 
 #ifdef _WIN32
+  #ifndef WIN32_LEAN_AND_MEAN
   #define WIN32_LEAN_AND_MEAN
+  #endif
   #include <windows.h>
 #endif
 
@@ -50,9 +52,9 @@ struct MockFontService : public ZSlate::ISlateFontService
         return h;
     }
     void UnloadFont(void*) override {}
-    Vector2 MeasureText(void*, const std::string& text) const override
+    ZSlate::Vector2 MeasureText(void*, const std::string& text) const override
     {
-        return Vector2(static_cast<float>(text.size()) * 8.0f, 14.0f);
+        return ZSlate::Vector2(static_cast<float>(text.size()) * 8.0f, 14.0f);
     }
     void* GetDefaultFont() const override { return nullptr; }
 };
@@ -107,7 +109,10 @@ public:
 
         // Button
         auto btn = std::make_shared<ZSlate::SButton>();
-        btn->SetText("Click Me");
+        auto btnLabel = std::make_shared<ZSlate::STextBlock>();
+        btnLabel->Text = "Click Me";
+        btnLabel->Color = ZSlate::Colors::White;
+        btn->SetContent(btnLabel);
         btn->OnClicked = []() { printf("[ZSlate] Button clicked!\n"); };
         root->AddSlot(btn);
 
@@ -197,8 +202,11 @@ int main()
     DemoApp app;
     ZSlate::SetPlatform(&app.m_Platform);
 
-    auto measurer = std::make_shared<ZSlate::SlateUIRendererTextMeasurer>(&app.m_Platform.Renderer);
-    ZSlate::SlateApplication::Get().SetTextMeasurer(measurer.get());
+    // Tell the renderer how to measure text (default: 0.6 * fontSize per char)
+    app.m_Platform.Renderer.SetTextMeasurerCallback(
+        [](const std::string& text, float fontSize) -> ZSlate::Vector2 {
+            return ZSlate::Vector2(static_cast<float>(text.length()) * fontSize * 0.6f, fontSize * 1.2f);
+        });
 
     app.BuildUI();
 
