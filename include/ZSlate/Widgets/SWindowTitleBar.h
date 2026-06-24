@@ -57,9 +57,9 @@ public:
         if (ctx.Renderer == nullptr)
             return;
         const UIRect r = geom.ToRect();
-        const float box = std::min(r.width, r.height) * 0.34f;
-        const float cx = r.x + r.width * 0.5f;
-        const float cy = r.y + r.height * 0.5f;
+        const float box = std::min(r.w, r.h) * 0.34f;
+        const float cx = r.x + r.w * 0.5f;
+        const float cy = r.y + r.h * 0.5f;
         switch (Glyph)
         {
             case EWindowGlyph::Maximize:
@@ -73,7 +73,7 @@ public:
                 break;
             }
             case EWindowGlyph::Close:
-                ctx.Renderer->drawText(r, "x", std::max(10.0f, r.height * 0.5f), Color,
+                ctx.Renderer->drawText(r, "x", std::max(10.0f, r.h * 0.5f), Color,
                                        TextAnchor::MiddleCenter, TextWrapMode::NoWrap, nullptr);
                 break;
         }
@@ -162,12 +162,12 @@ public:
         const UIRect r = geom.ToRect();
         ctx.Renderer->drawQuad(r, BarColor);
         const float accent_h = std::max(1.0f, BarHeight * 0.08f);
-        ctx.Renderer->drawQuad(UIRect(r.x, r.y + r.height - accent_h, r.width, accent_h), AccentColor);
+        ctx.Renderer->drawQuad(UIRect(r.x, r.y + r.h - accent_h, r.w, accent_h), AccentColor);
         if (!Title.empty())
         {
             const float pad = BarHeight * 0.30f;
-            const float text_w = std::max(1.0f, r.width - 2.0f * BarHeight - pad);
-            ctx.Renderer->drawText(UIRect(r.x + pad, r.y, text_w, r.height), Title, FontSize, TitleColor,
+            const float text_w = std::max(1.0f, r.w - 2.0f * BarHeight - pad);
+            ctx.Renderer->drawText(UIRect(r.x + pad, r.y, text_w, r.h), Title, FontSize, TitleColor,
                                    TextAnchor::MiddleLeft, TextWrapMode::NoWrap, nullptr);
         }
     }
@@ -262,9 +262,9 @@ public:
             return;
         const UIRect r = geom.ToRect();
         const Vector2 tri[3] = {
-            Vector2(r.x + r.width, r.y),
-            Vector2(r.x + r.width, r.y + r.height),
-            Vector2(r.x, r.y + r.height),
+            Vector2(r.x + r.w, r.y),
+            Vector2(r.x + r.w, r.y + r.h),
+            Vector2(r.x, r.y + r.h),
         };
         ctx.Renderer->drawConvexPoly(tri, 3, Color);
     }

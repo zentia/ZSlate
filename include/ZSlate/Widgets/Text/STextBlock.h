@@ -1,19 +1,28 @@
 #pragma once
 
-// Minimal STextBlock stub — ZEditor build dependency.
+// STextBlock: displays a single line of text.
+// UE analogue: Widgets/Text/STextBlock.h
 // TODO: replace with full implementation from ZSlate submodule.
 
 #include "ZSlate/Widgets/SWidget.h"
 
+#include <string>
+
 namespace ZSlate
 {
 
-// STextBlock: displays a single line of text.
 class STextBlock : public SWidget
 {
 public:
     STextBlock() = default;
     virtual ~STextBlock() = default;
+
+    // Public members accessed by UMG UTextBlock.h and SRCachedRun.
+    // Alignment is TextAnchor (same type as in UE Slate), NOT EHorizontalAlignment.
+    std::string Text;
+    UIColor     Color {0.9f, 0.9f, 0.9f, 1.0f};
+    float       FontSize {14.0f};
+    TextAnchor  Alignment {TextAnchor::MiddleLeft};
 
     void SetText(const std::string& t) { Text = t; }
     const std::string& GetText() const { return Text; }
@@ -21,15 +30,8 @@ public:
     void SetColor(const UIColor& c) { Color = c; }
     void SetFontSize(float s) { FontSize = s; }
 
-    // Public members accessed by SRCachedRun::OnPaint (SRichTextBlock.cpp).
-    std::string Text;
-    UIColor     Color {0.9f, 0.9f, 0.9f, 1.0f};
-    float       FontSize {14.0f};
-    EHorizontalAlignment Alignment {EHorizontalAlignment::Left};  // accessed by SMenu.cpp
-
     Vector2 ComputeDesiredSize() const override
     {
-        // Stub: return a fixed size
         return Vector2(static_cast<float>(Text.length()) * FontSize * 0.6f, FontSize + 4.0f);
     }
 
@@ -39,8 +41,7 @@ public:
     {
         if (ctx.Renderer && !Text.empty())
         {
-            ctx.Renderer->drawText(geom.ToRect(), Text, FontSize, Color,
-                                   TextAnchor::MiddleLeft, TextWrapMode::NoWrap);
+            ctx.Renderer->drawText(geom.ToRect(), Text, FontSize, Color, Alignment, TextWrapMode::NoWrap);
         }
     }
 };
