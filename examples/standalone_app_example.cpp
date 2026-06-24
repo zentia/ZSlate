@@ -1,37 +1,39 @@
 // ============================================================================
 // ZSlate Standalone Application Example
 // ============================================================================
-// Demonstrates building a complete UI with ZSlate using ZSlateBatchedRenderer,
-// a battery-included ISlateRenderer that records draw calls into CPU-side
-// vertex/index buffers.  After EndFrame(), read GetVertices()/GetIndices()/
-// GetCommands() and submit to your GPU backend.
+// Demonstrates building a complete UI with ZSlate using ZSlateBatchedRenderer.
 //
-// To use with your own renderer: replace ZSlateBatchedRenderer with your
-// ISlateRenderer implementation.  ZSlate never touches GPU APIs directly.
+// On Windows, opens a native Win32 window (no external library needed).
+// On other platforms, adapt the window creation to GLFW / SDL / your toolkit.
+//
+// The renderer records draw calls into CPU-side vertex/index buffers after
+// each paint.  In a real GPU app, upload those buffers and draw them.
 // ============================================================================
 
 #include "ZSlate/Application/SlateApplication.h"
 #include "ZSlate/Application/SlateInput.h"
 #include "ZSlate/Core/SlatePaint.h"
 #include "ZSlate/Core/SlateGeometry.h"
-#include "ZSlate/Core/SlateClipboard.h"
 #include "ZSlate/Renderer/ZSlateBatchedRenderer.h"
 #include "ZSlate/Widgets/Panels/SBorder.h"
 #include "ZSlate/Widgets/Layout/SBoxPanel.h"
 #include "ZSlate/Widgets/Input/SButton.h"
 #include "ZSlate/Widgets/Input/SCheckBox.h"
 #include "ZSlate/Widgets/Input/SEditableTextBox.h"
-#include "ZSlate/Widgets/Panels/SOverlay.h"
-#include "ZSlate/Widgets/Layout/SScrollBox.h"
 #include "ZSlate/Widgets/Input/SSlider.h"
 #include "ZSlate/Widgets/Layout/SSpacer.h"
-#include "ZSlate/Widgets/Layout/SSplitter.h"
 #include "ZSlate/Widgets/Text/STextBlock.h"
 #include "ZSlate/Widgets/SWidget.h"
 
 #include <cstdio>
 #include <memory>
 #include <string>
+#include <chrono>
+
+#ifdef _WIN32
+  #define WIN32_LEAN_AND_MEAN
+  #include <windows.h>
+#endif
 
 // ============================================================================
 // Mock Font Service
@@ -41,26 +43,22 @@ struct MockFontService : public ZSlate::ISlateFontService
 {
     std::unordered_map<std::string, void*> m_FontCache;
 
-    void* LoadFont(const std::string& fontPath, float size) override
+    void* LoadFont(const std::string& path, float size) override
     {
-        void* handle = reinterpret_cast<void*>(fontPath.size() + static_cast<size_t>(size));
-        m_FontCache[fontPath + std::to_string(static_cast<int>(size))] = handle;
-        return handle;
+        void* h = reinterpret_cast<void*>(path.size() + static_cast<size_t>(size));
+        m_FontCache[path + std::to_string(static_cast<int>(size))] = h;
+        return h;
     }
-
-    void UnloadFont(void* handle) override { (void)handle; }
-
-    Vector2 MeasureText(void* fontHandle, const std::string& text) const override
+    void UnloadFont(void*) override {}
+    Vector2 MeasureText(void*, const std::string& text) const override
     {
-        (void)fontHandle;
         return Vector2(static_cast<float>(text.size()) * 8.0f, 14.0f);
     }
-
     void* GetDefaultFont() const override { return nullptr; }
 };
 
 // ============================================================================
-// Platform (using ZSlateBatchedRenderer as the renderer backend)
+// Platform
 // ============================================================================
 
 class DemoPlatform : public ZSlate::ISlatePlatform
@@ -69,44 +67,21 @@ public:
     ZSlate::ZSlateBatchedRenderer Renderer;
     MockFontService               FontService;
 
-    bool            m_MouseDown {false};
-    ZSlate::Vector2 m_MousePos {400, 300};
-    float           m_Time {0};
+    bool            m_MouseDown[3] {};
+    ZSlate::Vector2 m_MousePos {0, 0};
     ZSlate::Vector2 m_WinSize {800, 600};
 
     ZSlate::ISlateRenderer*    GetRenderer()    override { return &Renderer; }
     ZSlate::ISlateFontService* GetFontService() override { return &FontService; }
     ZSlate::Vector2            GetMousePosition()    const override { return m_MousePos; }
-    bool                       IsMouseButtonDown(int) const override { return m_MouseDown; }
+    bool                       IsMouseButtonDown(int b) const override { return b < 3 ? m_MouseDown[b] : false; }
     bool                       IsKeyDown(int)        const override { return false; }
-    float                      GetTimeSeconds()      const override { return m_Time; }
-    ZSlate::Vector2            GetWindowSize()       const override { return m_WinSize; }
-};
-
-// ============================================================================
-// Custom Widget: Color Picker
-// ============================================================================
-
-class SColorPicker : public ZSlate::SLeafWidget
-{
-public:
-    ZSlate::UIColor Color {ZSlate::Colors::White};
-    std::function<void(const ZSlate::UIColor&)> OnColorChanged;
-
-    ZSlate::Vector2 ComputeDesiredSize() const override { return ZSlate::Vector2(80, 80); }
-
-    void OnPaint(const ZSlate::FPaintContext& ctx, const ZSlate::FGeometry& geom) const override
+    float                      GetTimeSeconds()      const override
     {
-        if (!ctx.Renderer) return;
-        ctx.Renderer->DrawQuad(geom.ToRect(), Color);
-        ctx.Renderer->DrawRect(geom.ToRect(), ZSlate::Colors::Black, 1.0f);
+        static auto start = std::chrono::steady_clock::now();
+        return std::chrono::duration<float>(std::chrono::steady_clock::now() - start).count();
     }
-
-    ZSlate::FReply OnMouseButtonDown(const ZSlate::Vector2&, int button) override
-    {
-        if (button == 0 && OnColorChanged) OnColorChanged(Color);
-        return ZSlate::FReply::Handled();
-    }
+    ZSlate::Vector2 GetWindowSize() const override { return m_WinSize; }
 };
 
 // ============================================================================
@@ -123,18 +98,18 @@ public:
         auto root = std::make_shared<ZSlate::SVerticalBox>();
 
         // Title
-        auto title = std::make_shared<ZSlate::STextBlock>();
-        title->Text = "ZSlate Standalone Demo";
-        title->FontSize = 24;
-        title->Color = ZSlate::Colors::White;
-        root->AddSlot(title);
-
+        auto t = std::make_shared<ZSlate::STextBlock>();
+        t->Text = "ZSlate Standalone Demo";
+        t->FontSize = 24;
+        t->Color = ZSlate::Colors::White;
+        root->AddSlot(t);
         root->AddSlot(std::make_shared<ZSlate::SSpacer>(ZSlate::Vector2(0, 12)));
 
-        // Buttons
-        auto btn1 = std::make_shared<ZSlate::SButton>();
-        btn1->SetText("Click Me");
-        root->AddSlot(btn1);
+        // Button
+        auto btn = std::make_shared<ZSlate::SButton>();
+        btn->SetText("Click Me");
+        btn->OnClicked = []() { printf("[ZSlate] Button clicked!\n"); };
+        root->AddSlot(btn);
 
         // Checkbox
         auto cb = std::make_shared<ZSlate::SCheckBox>();
@@ -143,14 +118,9 @@ public:
         root->AddSlot(cb);
 
         // Slider
-        auto slider = std::make_shared<ZSlate::SSlider>();
-        slider->Value = 50;
-        root->AddSlot(slider);
-
-        // Color picker
-        auto cp = std::make_shared<SColorPicker>();
-        cp->Color = ZSlate::Colors::Red;
-        root->AddSlot(cp);
+        auto sl = std::make_shared<ZSlate::SSlider>();
+        sl->Value = 50;
+        root->AddSlot(sl);
 
         ZSlate::SlateApplication::Get().SetRootContent(root);
     }
@@ -158,46 +128,71 @@ public:
     void RunFrame()
     {
         m_Platform.Renderer.BeginFrame();
-
         ZSlate::UIRect region(0, 0, m_Platform.GetWindowSize().x, m_Platform.GetWindowSize().y);
         ZSlate::SlateApplication::Get().PaintInto(&m_Platform.Renderer, region);
-
         m_Platform.Renderer.EndFrame();
 
-        // In a real app, upload the batch to GPU and render:
-        //   auto& verts   = m_Platform.Renderer.GetVertices();
-        //   auto& indices = m_Platform.Renderer.GetIndices();
-        //   auto& cmds    = m_Platform.Renderer.GetCommands();
-        //   glBufferSubData / vkCmdUpdateBuffer ...
-        //   for (auto& cmd : cmds)
-        //       glBindTexture(cmd.TextureId); glScissor(cmd.ClipRect); glDrawElements(...);
-
-        PrintBatchStats();
-    }
-
-private:
-    void PrintBatchStats()
-    {
-        const auto& cmds = m_Platform.Renderer.GetCommands();
-        size_t totalTris = 0;
-        for (const auto& c : cmds) totalTris += c.IndexCount / 3;
-
-        printf("[Frame] %zu draw commands, %zu vertices, %zu indices (%zu triangles)\n",
-               cmds.size(),
-               m_Platform.Renderer.GetVertices().size(),
-               m_Platform.Renderer.GetIndices().size(),
-               totalTris);
+        // Print stats every 60 frames
+        static int frameNum = 0;
+        if (++frameNum % 60 == 0)
+        {
+            const auto& c = m_Platform.Renderer.GetCommands();
+            size_t tris = 0;
+            for (const auto& cmd : c) tris += cmd.IndexCount / 3;
+            printf("[Frame %d] %zu draw commands, %zu vertices, %zu triangles\n",
+                   frameNum, c.size(), m_Platform.Renderer.GetVertices().size(), tris);
+        }
     }
 };
 
 // ============================================================================
-// Main
+// Main — real window loop
 // ============================================================================
+
+#ifdef _WIN32
+
+LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
+{
+    static DemoApp* app = nullptr;
+
+    switch (msg)
+    {
+    case WM_CREATE:
+        app = reinterpret_cast<DemoApp*>(
+            reinterpret_cast<CREATESTRUCT*>(lp)->lpCreateParams);
+        return 0;
+
+    case WM_SIZE:
+        if (app)
+        {
+            app->m_Platform.m_WinSize.x = static_cast<float>(LOWORD(lp));
+            app->m_Platform.m_WinSize.y = static_cast<float>(HIWORD(lp));
+        }
+        return 0;
+
+    case WM_MOUSEMOVE:
+        if (app)
+            app->m_Platform.m_MousePos = ZSlate::Vector2(
+                static_cast<float>(LOWORD(lp)), static_cast<float>(HIWORD(lp)));
+        return 0;
+
+    case WM_LBUTTONDOWN: app->m_Platform.m_MouseDown[0] = true;  return 0;
+    case WM_LBUTTONUP:   app->m_Platform.m_MouseDown[0] = false; return 0;
+    case WM_RBUTTONDOWN: app->m_Platform.m_MouseDown[1] = true;  return 0;
+    case WM_RBUTTONUP:   app->m_Platform.m_MouseDown[1] = false; return 0;
+    case WM_MBUTTONDOWN: app->m_Platform.m_MouseDown[2] = true;  return 0;
+    case WM_MBUTTONUP:   app->m_Platform.m_MouseDown[2] = false; return 0;
+
+    case WM_DESTROY:
+        PostQuitMessage(0);
+        return 0;
+    }
+    return DefWindowProc(hwnd, msg, wp, lp);
+}
 
 int main()
 {
-    printf("=== ZSlate Standalone Application ===\n");
-    printf("Renderer: ZSlateBatchedRenderer (CPU batch, ready for GPU upload)\n\n");
+    printf("=== ZSlate Standalone (Native Win32 Window) ===\n");
 
     DemoApp app;
     ZSlate::SetPlatform(&app.m_Platform);
@@ -207,12 +202,61 @@ int main()
 
     app.BuildUI();
 
-    for (int i = 0; i < 3; i++)
+    // ---- Create a native window ---------------------------------------------
+    WNDCLASSA wc {};
+    wc.lpfnWndProc   = WndProc;
+    wc.hInstance     = GetModuleHandle(nullptr);
+    wc.hCursor       = LoadCursor(nullptr, IDC_ARROW);
+    wc.lpszClassName = "ZSlateDemoWindow";
+    RegisterClassA(&wc);
+
+    int w = static_cast<int>(app.m_Platform.m_WinSize.x);
+    int h = static_cast<int>(app.m_Platform.m_WinSize.y);
+    HWND hwnd = CreateWindowA("ZSlateDemoWindow", "ZSlate Demo",
+                              WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT,
+                              w, h, nullptr, nullptr, GetModuleHandle(nullptr), &app);
+    ShowWindow(hwnd, SW_SHOW);
+
+    // ---- Message loop -------------------------------------------------------
+    MSG msg {};
+    while (true)
     {
-        printf("--- Frame %d ---\n", i + 1);
+        // Peek + dispatch all pending messages
+        while (PeekMessageA(&msg, nullptr, 0, 0, PM_REMOVE))
+        {
+            if (msg.message == WM_QUIT) return 0;
+            TranslateMessage(&msg);
+            DispatchMessage(&msg);
+        }
+
+        // Paint one ZSlate frame
         app.RunFrame();
+
+        // Invalidate to trigger redraw (naive: every frame)
+        InvalidateRect(hwnd, nullptr, FALSE);
+        Sleep(1);  // yield to avoid 100% CPU
     }
 
-    printf("\n=== Done ===\n");
     return 0;
 }
+
+#else  // non-Windows — adapt to your windowing toolkit
+
+int main()
+{
+    printf("=== ZSlate Standalone (Console Mode) ===\n");
+    printf("This example needs a real window. Adapt to your toolkit:\n");
+    printf("  - GLFW:  glfwCreateWindow + glfwPollEvents loop\n");
+    printf("  - SDL:   SDL_CreateWindow + SDL_PollEvent loop\n\n");
+
+    DemoApp app;
+    ZSlate::SetPlatform(&app.m_Platform);
+    app.BuildUI();
+
+    printf("Press Enter to exit after 3 demo frames...\n");
+    for (int i = 0; i < 3; i++) app.RunFrame();
+    getchar();
+    return 0;
+}
+
+#endif
