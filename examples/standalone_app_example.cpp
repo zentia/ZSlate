@@ -1,9 +1,8 @@
 // ============================================================================
 // ZSlate Standalone Application Example
 // ============================================================================
-// Windows: native Win32 window + D3D11 renderer (no external deps beyond
-//   d3d11.lib + d3dcompiler.lib — both ship with Windows SDK).
-// Other platforms: adapt D3D11 → GLFW/SDL/Vulkan/Metal.
+// Windows: native Win32 window + D3D11 renderer + font atlas (stb_truetype).
+// No external deps beyond d3d11.lib + d3dcompiler.lib (Windows SDK).
 // ============================================================================
 
 #include "ZSlate/Application/SlateApplication.h"
@@ -11,6 +10,7 @@
 #include "ZSlate/Core/SlatePaint.h"
 #include "ZSlate/Core/SlateGeometry.h"
 #include "ZSlate/Renderer/ZSlateBatchedRenderer.h"
+#include "ZSlate/Renderer/ZSlateFontAtlas.h"
 #include "ZSlate/Widgets/Panels/SBorder.h"
 #include "ZSlate/Widgets/Layout/SBoxPanel.h"
 #include "ZSlate/Widgets/Input/SButton.h"
@@ -42,29 +42,19 @@
 // ============================================================================
 // Mock Font Service
 // ============================================================================
-
 struct MockFontService : public ZSlate::ISlateFontService
 {
-    std::unordered_map<std::string, void*> m_FontCache;
-
-    void* LoadFont(const std::string& path, float size) override
-    {
-        void* h = reinterpret_cast<void*>(path.size() + static_cast<size_t>(size));
-        m_FontCache[path + std::to_string(static_cast<int>(size))] = h;
-        return h;
-    }
+    void* LoadFont(const std::string& path, float size) override { (void)path; (void)size; return nullptr; }
     void UnloadFont(void*) override {}
-    ZSlate::Vector2 MeasureText(void*, const std::string& text) const override
-    {
-        return ZSlate::Vector2(static_cast<float>(text.size()) * 8.0f, 14.0f);
+    ZSlate::Vector2 MeasureText(void*, const std::string& text) const override {
+        return ZSlate::Vector2((float)text.size() * 8.0f, 14.0f);
     }
     void* GetDefaultFont() const override { return nullptr; }
 };
 
 // ============================================================================
-// D3D11 Render Backend
+// D3D11 Backend (with font atlas texture support)
 // ============================================================================
-
 #ifdef _WIN32
 
 struct D3D11Backend
@@ -83,12 +73,16 @@ struct D3D11Backend
     ID3D11RasterizerState*  RasterState = nullptr;
     ID3D11Buffer*           PerFrameCB  = nullptr;
 
+    // Textures
+    ID3D11Texture2D*          FontTex = nullptr;
+    ID3D11ShaderResourceView* FontSRV = nullptr;
+    ID3D11SamplerState*       Sampler = nullptr;
+    ID3D11ShaderResourceView* WhiteSRV = nullptr;  // 1x1 white for solid-color quads
+
     uint32_t Width  = 0;
     uint32_t Height = 0;
 
-    // Pre-compiled HLSL:
-    //   VS: sv_position = float4(pos.xy / halfWin * float2(1,-1) + float2(-1,1), 0, 1), pass uv/color
-    //   PS: return color
+    // Embedded HLSL source — compiled at runtime by D3DCompile
     static const uint8_t g_VSBytecode[];
     static const size_t  g_VSSize;
     static const uint8_t g_PSBytecode[];
@@ -98,8 +92,7 @@ struct D3D11Backend
     {
         RECT rc; GetClientRect(hwnd, &rc);
         Width = rc.right - rc.left; Height = rc.bottom - rc.top;
-        if (Width == 0) Width = 800;
-        if (Height == 0) Height = 600;
+        if (Width == 0) Width = 800; if (Height == 0) Height = 600;
 
         DXGI_SWAP_CHAIN_DESC sd {};
         sd.BufferCount = 2;
@@ -112,90 +105,113 @@ struct D3D11Backend
         sd.Windowed = TRUE;
 
         D3D_FEATURE_LEVEL fl;
-        HRESULT hr = D3D11CreateDeviceAndSwapChain(
-            nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, D3D11_CREATE_DEVICE_SINGLETHREADED,
-            nullptr, 0, D3D11_SDK_VERSION, &sd, &SwapChain, &Device, &fl, &Context);
-        if (FAILED(hr)) { printf("D3D11CreateDeviceAndSwapChain failed (0x%08x)\n", (unsigned)hr); return false; }
+        if (FAILED(D3D11CreateDeviceAndSwapChain(
+                nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, D3D11_CREATE_DEVICE_SINGLETHREADED,
+                nullptr, 0, D3D11_SDK_VERSION, &sd, &SwapChain, &Device, &fl, &Context)))
+        { printf("D3D11CreateDeviceAndSwapChain failed\n"); return false; }
 
-        ID3D11Texture2D* backBuffer = nullptr;
-        SwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**)&backBuffer);
-        if (backBuffer) { Device->CreateRenderTargetView(backBuffer, nullptr, &RTV); backBuffer->Release(); }
+        ID3D11Texture2D* bb = nullptr;
+        SwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**)&bb);
+        if (bb) { Device->CreateRenderTargetView(bb, nullptr, &RTV); bb->Release(); }
 
-        // Compile shaders
         if (!CompileShaders()) return false;
 
-        // Blend: premultiplied alpha
         D3D11_BLEND_DESC bd {};
         bd.RenderTarget[0].BlendEnable = TRUE;
-        bd.RenderTarget[0].SrcBlend  = D3D11_BLEND_SRC_ALPHA;
+        bd.RenderTarget[0].SrcBlend = D3D11_BLEND_SRC_ALPHA;
         bd.RenderTarget[0].DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
-        bd.RenderTarget[0].BlendOp   = D3D11_BLEND_OP_ADD;
-        bd.RenderTarget[0].SrcBlendAlpha  = D3D11_BLEND_ONE;
+        bd.RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
+        bd.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_ONE;
         bd.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_INV_SRC_ALPHA;
-        bd.RenderTarget[0].BlendOpAlpha   = D3D11_BLEND_OP_ADD;
+        bd.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD;
         bd.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
         Device->CreateBlendState(&bd, &BlendState);
 
-        // Raster
         D3D11_RASTERIZER_DESC rd {};
-        rd.FillMode = D3D11_FILL_SOLID;
-        rd.CullMode = D3D11_CULL_NONE;
-        rd.ScissorEnable = TRUE;
+        rd.FillMode = D3D11_FILL_SOLID; rd.CullMode = D3D11_CULL_NONE; rd.ScissorEnable = TRUE;
         Device->CreateRasterizerState(&rd, &RasterState);
 
-        // Per-frame constant buffer: ViewportSize (float2)
         D3D11_BUFFER_DESC cbd {};
-        cbd.ByteWidth = 16;  // float2 = 8 bytes, padded to 16
-        cbd.Usage = D3D11_USAGE_DYNAMIC;
-        cbd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-        cbd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+        cbd.ByteWidth = 16; cbd.Usage = D3D11_USAGE_DYNAMIC;
+        cbd.BindFlags = D3D11_BIND_CONSTANT_BUFFER; cbd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
         Device->CreateBuffer(&cbd, nullptr, &PerFrameCB);
 
+        // Sampler: point + clamp (for the font atlas, bilinear smudges glyphs)
+        D3D11_SAMPLER_DESC samp {};
+        samp.Filter = D3D11_FILTER_MIN_MAG_MIP_POINT;
+        samp.AddressU = samp.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
+        Device->CreateSamplerState(&samp, &Sampler);
+
+        CreateWhiteTexture();
+        printf("[D3D11] Init OK\n");
         return true;
+    }
+
+    void CreateWhiteTexture()
+    {
+        uint8_t white[4] = {255, 255, 255, 255};
+        D3D11_SUBRESOURCE_DATA sd {white, 4, 4};
+        D3D11_TEXTURE2D_DESC td {};
+        td.Width = 1; td.Height = 1; td.MipLevels = 1; td.ArraySize = 1;
+        td.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+        td.SampleDesc.Count = 1; td.Usage = D3D11_USAGE_IMMUTABLE;
+        td.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+        ID3D11Texture2D* tex = nullptr;
+        Device->CreateTexture2D(&td, &sd, &tex);
+        if (tex) { Device->CreateShaderResourceView(tex, nullptr, &WhiteSRV); tex->Release(); }
+    }
+
+    void UploadFontAtlas(ZSlate::ZSlateFontAtlas& atlas)
+    {
+        if (!atlas.IsDirty() || !atlas.IsLoaded()) return;
+
+        uint32_t aw = atlas.GetWidth(), ah = atlas.GetHeight();
+        if (!FontTex)
+        {
+            D3D11_TEXTURE2D_DESC td {};
+            td.Width = aw; td.Height = ah; td.MipLevels = 1; td.ArraySize = 1;
+            td.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+            td.SampleDesc.Count = 1; td.Usage = D3D11_USAGE_DYNAMIC;
+            td.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+            td.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+            Device->CreateTexture2D(&td, nullptr, &FontTex);
+            Device->CreateShaderResourceView(FontTex, nullptr, &FontSRV);
+        }
+
+        D3D11_MAPPED_SUBRESOURCE m {};
+        Context->Map(FontTex, 0, D3D11_MAP_WRITE_DISCARD, 0, &m);
+        const uint8_t* src = atlas.GetPixels();
+        for (uint32_t row = 0; row < ah; ++row)
+            memcpy((uint8_t*)m.pData + row * m.RowPitch, src + row * aw * 4, aw * 4);
+        Context->Unmap(FontTex, 0);
+
+        atlas.ClearDirty();
     }
 
     bool CompileShaders()
     {
-        UINT compileFlags = D3DCOMPILE_ENABLE_STRICTNESS;
+        UINT fl = D3DCOMPILE_ENABLE_STRICTNESS;
 #ifdef _DEBUG
-        compileFlags |= D3DCOMPILE_DEBUG;
+        fl |= D3DCOMPILE_DEBUG;
 #endif
-        ID3DBlob* errBlob = nullptr;
+        ID3DBlob *blob = nullptr, *err = nullptr;
 
-        // Vertex shader
-        ID3DBlob* vsBlob = nullptr;
-        HRESULT hr = D3DCompile((LPCSTR)g_VSBytecode, g_VSSize, "vs", nullptr, nullptr, "main",
-                                "vs_5_0", compileFlags, 0, &vsBlob, &errBlob);
-        if (FAILED(hr))
-        {
-            printf("VS compile failed (0x%08x)\n", (unsigned)hr);
-            if (errBlob) { printf("%s\n", (const char*)errBlob->GetBufferPointer()); errBlob->Release(); }
-            return false;
-        }
-        Device->CreateVertexShader(vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(), nullptr, &VS);
+        if (FAILED(D3DCompile((LPCSTR)g_VSBytecode, g_VSSize, "vs", nullptr, nullptr, "main", "vs_5_0", fl, 0, &blob, &err)))
+        { if (err) printf("VS err: %s\n", (char*)err->GetBufferPointer()); return false; }
+        Device->CreateVertexShader(blob->GetBufferPointer(), blob->GetBufferSize(), nullptr, &VS);
 
-        // Input layout
-        D3D11_INPUT_ELEMENT_DESC layout[] = {
-            {"POSITION", 0, DXGI_FORMAT_R32G32_FLOAT,   0, 0,  D3D11_INPUT_PER_VERTEX_DATA, 0},
-            {"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,   0, 8,  D3D11_INPUT_PER_VERTEX_DATA, 0},
-            {"COLOR",    0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 16, D3D11_INPUT_PER_VERTEX_DATA, 0},
+        D3D11_INPUT_ELEMENT_DESC lay[] = {
+            {"POSITION",0,DXGI_FORMAT_R32G32_FLOAT,0,0,D3D11_INPUT_PER_VERTEX_DATA,0},
+            {"TEXCOORD",0,DXGI_FORMAT_R32G32_FLOAT,0,8,D3D11_INPUT_PER_VERTEX_DATA,0},
+            {"COLOR",0,DXGI_FORMAT_R32G32B32A32_FLOAT,0,16,D3D11_INPUT_PER_VERTEX_DATA,0},
         };
-        Device->CreateInputLayout(layout, 3, vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(), &InputLayout);
-        vsBlob->Release();
+        Device->CreateInputLayout(lay, 3, blob->GetBufferPointer(), blob->GetBufferSize(), &InputLayout);
+        blob->Release();
 
-        // Pixel shader
-        ID3DBlob* psBlob = nullptr;
-        hr = D3DCompile((LPCSTR)g_PSBytecode, g_PSSize, "ps", nullptr, nullptr, "main",
-                        "ps_5_0", compileFlags, 0, &psBlob, &errBlob);
-        if (FAILED(hr))
-        {
-            printf("PS compile failed (0x%08x)\n", (unsigned)hr);
-            if (errBlob) { printf("%s\n", (const char*)errBlob->GetBufferPointer()); errBlob->Release(); }
-            return false;
-        }
-        Device->CreatePixelShader(psBlob->GetBufferPointer(), psBlob->GetBufferSize(), nullptr, &PS);
-        psBlob->Release();
-
+        if (FAILED(D3DCompile((LPCSTR)g_PSBytecode, g_PSSize, "ps", nullptr, nullptr, "main", "ps_5_0", fl, 0, &blob, &err)))
+        { if (err) printf("PS err: %s\n", (char*)err->GetBufferPointer()); return false; }
+        Device->CreatePixelShader(blob->GetBufferPointer(), blob->GetBufferSize(), nullptr, &PS);
+        blob->Release();
         printf("[D3D11] Shaders compiled OK\n");
         return true;
     }
@@ -212,59 +228,45 @@ struct D3D11Backend
         if (bb) { Device->CreateRenderTargetView(bb, nullptr, &RTV); bb->Release(); }
     }
 
-    void Render(ZSlate::ZSlateBatchedRenderer& renderer)
+    void Render(ZSlate::ZSlateBatchedRenderer& renderer, ZSlate::ZSlateFontAtlas* fontAtlas)
     {
         if (!Device) return;
 
-        const auto& vertices = renderer.GetVertices();
-        const auto& indices  = renderer.GetIndices();
-        const auto& commands = renderer.GetCommands();
+        // Upload font atlas if dirty
+        if (fontAtlas) UploadFontAtlas(*fontAtlas);
 
-        // Upload vertex buffer (skip if empty — but we always draw a fallback quad)
+        const auto& v = renderer.GetVertices();
+        const auto& i = renderer.GetIndices();
+        const auto& c = renderer.GetCommands();
+
         if (VB) { VB->Release(); VB = nullptr; }
-        {
-            D3D11_BUFFER_DESC bd {};
-            bd.ByteWidth = (UINT)(vertices.size() * sizeof(ZSlate::ZSBVertex));
-            bd.Usage = D3D11_USAGE_DYNAMIC;
-            bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-            bd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-            D3D11_SUBRESOURCE_DATA sd {};
-            sd.pSysMem = vertices.data();
-            Device->CreateBuffer(&bd, (vertices.empty() ? nullptr : &sd), &VB);
-        }
-
+        { D3D11_BUFFER_DESC b {}; b.ByteWidth=(UINT)(v.size()*sizeof(ZSlate::ZSBVertex));
+          b.Usage=D3D11_USAGE_DYNAMIC; b.BindFlags=D3D11_BIND_VERTEX_BUFFER; b.CPUAccessFlags=D3D11_CPU_ACCESS_WRITE;
+          D3D11_SUBRESOURCE_DATA s {}; s.pSysMem=v.data();
+          Device->CreateBuffer(&b, v.empty()?nullptr:&s, &VB); }
         if (IB) { IB->Release(); IB = nullptr; }
-        {
-            D3D11_BUFFER_DESC bd {};
-            bd.ByteWidth = (UINT)(indices.size() * sizeof(uint16_t));
-            bd.Usage = D3D11_USAGE_DYNAMIC;
-            bd.BindFlags = D3D11_BIND_INDEX_BUFFER;
-            bd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-            D3D11_SUBRESOURCE_DATA sd {};
-            sd.pSysMem = indices.data();
-            Device->CreateBuffer(&bd, (indices.empty() ? nullptr : &sd), &IB);
-        }
+        { D3D11_BUFFER_DESC b {}; b.ByteWidth=(UINT)(i.size()*sizeof(uint16_t));
+          b.Usage=D3D11_USAGE_DYNAMIC; b.BindFlags=D3D11_BIND_INDEX_BUFFER; b.CPUAccessFlags=D3D11_CPU_ACCESS_WRITE;
+          D3D11_SUBRESOURCE_DATA s {}; s.pSysMem=i.data();
+          Device->CreateBuffer(&b, i.empty()?nullptr:&s, &IB); }
 
-        // Clear to a visible color (not black)
-        float clear[4] = {0.08f, 0.10f, 0.18f, 1.0f};
-        Context->ClearRenderTargetView(RTV, clear);
+        float clr[4] = {0.08f, 0.10f, 0.18f, 1.0f};
+        Context->ClearRenderTargetView(RTV, clr);
         Context->OMSetRenderTargets(1, &RTV, nullptr);
         Context->RSSetState(RasterState);
-        D3D11_VIEWPORT vp {};
-        vp.Width = (FLOAT)Width; vp.Height = (FLOAT)Height; vp.MaxDepth = 1.0f;
+        D3D11_VIEWPORT vp {}; vp.Width=(FLOAT)Width; vp.Height=(FLOAT)Height; vp.MaxDepth=1.0f;
         Context->RSSetViewports(1, &vp);
 
-        // PerFrame CB: ViewportSize
-        D3D11_MAPPED_SUBRESOURCE mapped;
-        Context->Map(PerFrameCB, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
-        ((float*)mapped.pData)[0] = (float)Width;
-        ((float*)mapped.pData)[1] = (float)Height;
+        D3D11_MAPPED_SUBRESOURCE m;
+        Context->Map(PerFrameCB, 0, D3D11_MAP_WRITE_DISCARD, 0, &m);
+        ((float*)m.pData)[0]=(float)Width; ((float*)m.pData)[1]=(float)Height;
         Context->Unmap(PerFrameCB, 0);
         Context->VSSetConstantBuffers(0, 1, &PerFrameCB);
 
         Context->OMSetBlendState(BlendState, nullptr, 0xFFFFFFFF);
         Context->VSSetShader(VS, nullptr, 0);
         Context->PSSetShader(PS, nullptr, 0);
+        Context->PSSetSamplers(0, 1, &Sampler);
         Context->IASetInputLayout(InputLayout);
         Context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
@@ -273,33 +275,23 @@ struct D3D11Backend
         Context->IASetVertexBuffers(0, 1, &VB, &stride, &offset);
         Context->IASetIndexBuffer(IB, DXGI_FORMAT_R16_UINT, 0);
 
-        if (!commands.empty())
+        for (const auto& cmd : c)
         {
-            // Draw recorded ZSlate command list
-            for (const auto& cmd : commands)
-            {
-                if (cmd.HasClip)
-                {
-                    D3D11_RECT sc = {(LONG)std::max(cmd.ClipRect.x, 0.0f), (LONG)std::max(cmd.ClipRect.y, 0.0f),
-                                     (LONG)std::max(cmd.ClipRect.x + cmd.ClipRect.w, 0.0f),
-                                     (LONG)std::max(cmd.ClipRect.y + cmd.ClipRect.h, 0.0f)};
-                    Context->RSSetScissorRects(1, &sc);
-                }
-                else
-                {
-                    D3D11_RECT full = {0, 0, (LONG)Width, (LONG)Height};
-                    Context->RSSetScissorRects(1, &full);
-                }
-                Context->DrawIndexed(cmd.IndexCount, cmd.IndexOffset, 0);
+            // Bind correct texture: font atlas vs solid white
+            ID3D11ShaderResourceView* srv = WhiteSRV;
+            if (cmd.TextureId == ZSlate::ZSlateBatchedRenderer::kFontAtlasTextureId && FontSRV)
+                srv = FontSRV;
+            Context->PSSetShaderResources(0, 1, &srv);
+
+            if (cmd.HasClip) {
+                D3D11_RECT sc = {(LONG)std::max(cmd.ClipRect.x,0.0f),(LONG)std::max(cmd.ClipRect.y,0.0f),
+                                 (LONG)std::max(cmd.ClipRect.x+cmd.ClipRect.w,0.0f),
+                                 (LONG)std::max(cmd.ClipRect.y+cmd.ClipRect.h,0.0f)};
+                Context->RSSetScissorRects(1, &sc);
+            } else {
+                D3D11_RECT full={0,0,(LONG)Width,(LONG)Height}; Context->RSSetScissorRects(1, &full);
             }
-        }
-        else
-        {
-            // Fallback: no commands recorded → draw a visible placeholder
-            // (proves the D3D11 pipeline works; means ZSlate batching is empty)
-            printf("[WARN] No draw commands recorded — rendering fallback quad\n");
-            D3D11_RECT full = {0, 0, (LONG)Width, (LONG)Height};
-            Context->RSSetScissorRects(1, &full);
+            Context->DrawIndexed(cmd.IndexCount, cmd.IndexOffset, 0);
         }
 
         SwapChain->Present(1, 0);
@@ -307,43 +299,30 @@ struct D3D11Backend
 
     void Shutdown()
     {
-        if (VB)          VB->Release();
-        if (IB)          IB->Release();
-        if (PerFrameCB)  PerFrameCB->Release();
-        if (BlendState)  BlendState->Release();
-        if (RasterState) RasterState->Release();
-        if (InputLayout) InputLayout->Release();
-        if (VS)          VS->Release();
-        if (PS)          PS->Release();
-        if (RTV)         RTV->Release();
-        if (SwapChain)   SwapChain->Release();
-        if (Context)     Context->Release();
-        if (Device)      Device->Release();
+        if (VB) VB->Release(); if (IB) IB->Release(); if (PerFrameCB) PerFrameCB->Release();
+        if (BlendState) BlendState->Release(); if (RasterState) RasterState->Release();
+        if (InputLayout) InputLayout->Release(); if (VS) VS->Release(); if (PS) PS->Release();
+        if (WhiteSRV) WhiteSRV->Release(); if (FontSRV) FontSRV->Release();
+        if (FontTex) FontTex->Release(); if (Sampler) Sampler->Release();
+        if (RTV) RTV->Release(); if (SwapChain) SwapChain->Release();
+        if (Context) Context->Release(); if (Device) Device->Release();
     }
 };
 
-// Embedded HLSL source (compiled at runtime by D3DCompile).
-// ---- VS: screen-space (0..W, 0..H) -> clip-space (-1..1) ----
+// VS: screen coords → clip space
 const uint8_t D3D11Backend::g_VSBytecode[] = R"(
-struct VSInput  { float2 pos : POSITION; float2 uv : TEXCOORD; float4 col : COLOR; };
-struct VSOutput { float4 sv_pos : SV_POSITION; float2 uv : TEXCOORD; float4 col : COLOR; };
-
-cbuffer PerFrame : register(b0) { float2 ViewportSize; }
-
-VSOutput main(VSInput inp)
-{
-    VSOutput o;
-    o.sv_pos = float4((inp.pos / ViewportSize) * float2(2, -2) + float2(-1, 1), 0, 1);
-    o.uv = inp.uv;
-    o.col = inp.col;
-    return o;
-}
+struct VSI { float2 p : POSITION; float2 uv : TEXCOORD; float4 c : COLOR; };
+struct VSO { float4 sp : SV_POSITION; float2 uv : TEXCOORD; float4 c : COLOR; };
+cbuffer CB : register(b0) { float2 vp; }
+VSO main(VSI i) { VSO o; o.sp = float4((i.p/vp)*float2(2,-2)+float2(-1,1),0,1); o.uv=i.uv; o.c=i.c; return o; }
 )";
 const size_t D3D11Backend::g_VSSize = sizeof(D3D11Backend::g_VSBytecode) - 1;
 
+// PS: textured (white/solid → raw color; atlas → color * atlas.a)
 const uint8_t D3D11Backend::g_PSBytecode[] = R"(
-struct PSInput { float4 sv_pos : SV_POSITION; float2 uv : TEXCOORD; float4 col : COLOR; };
-float4 main(PSInput inp) : SV_TARGET { return inp.col; }
+Texture2D tex : register(t0); SamplerState sam : register(s0);
+struct PSI { float4 sp : SV_POSITION; float2 uv : TEXCOORD; float4 c : COLOR; };
+float4 main(PSI i) : SV_TARGET { float4 t = tex.Sample(sam, i.uv); return float4(i.c.rgb, i.c.a*t.a); }
 )";
 const size_t D3D11Backend::g_PSSize = sizeof(D3D11Backend::g_PSBytecode) - 1;
 
@@ -352,7 +331,6 @@ const size_t D3D11Backend::g_PSSize = sizeof(D3D11Backend::g_PSBytecode) - 1;
 // ============================================================================
 // Platform
 // ============================================================================
-
 class DemoPlatform : public ZSlate::ISlatePlatform
 {
 public:
@@ -365,13 +343,12 @@ public:
 
     ZSlate::ISlateRenderer*    GetRenderer()    override { return &Renderer; }
     ZSlate::ISlateFontService* GetFontService() override { return &FontService; }
-    ZSlate::Vector2            GetMousePosition()    const override { return m_MousePos; }
-    bool                       IsMouseButtonDown(int b) const override { return b < 3 ? m_MouseDown[b] : false; }
-    bool                       IsKeyDown(int)        const override { return false; }
-    float                      GetTimeSeconds()      const override
-    {
-        static auto start = std::chrono::steady_clock::now();
-        return std::chrono::duration<float>(std::chrono::steady_clock::now() - start).count();
+    ZSlate::Vector2 GetMousePosition()  const override { return m_MousePos; }
+    bool IsMouseButtonDown(int b) const override { return b<3 ? m_MouseDown[b] : false; }
+    bool IsKeyDown(int)          const override { return false; }
+    float GetTimeSeconds()       const override {
+        static auto t0 = std::chrono::steady_clock::now();
+        return std::chrono::duration<float>(std::chrono::steady_clock::now()-t0).count();
     }
     ZSlate::Vector2 GetWindowSize() const override { return m_WinSize; }
 };
@@ -379,11 +356,43 @@ public:
 // ============================================================================
 // Demo App
 // ============================================================================
-
 class DemoApp
 {
 public:
     DemoPlatform m_Platform;
+    ZSlate::ZSlateFontAtlas m_FontAtlas;
+
+    bool InitFonts()
+    {
+        // Primary font: Segoe UI (Windows default).  Falls back gracefully if
+        // not found — text will use blocky placeholder bars.
+        const char* primary = "C:\\Windows\\Fonts\\segoeui.ttf";
+        if (!m_FontAtlas.LoadFromFile(primary))
+            primary = "C:\\Windows\\Fonts\\consola.ttf";
+        if (!m_FontAtlas.IsLoaded())
+            m_FontAtlas.LoadFromFile(primary);
+
+        if (m_FontAtlas.IsLoaded())
+        {
+            printf("[Font] Loaded: %s\n", primary);
+            // CJK fallback for Chinese/Japanese/Korean text
+            const char* cjkFonts[] = {
+                "C:\\Windows\\Fonts\\msyh.ttc",
+                "C:\\Windows\\Fonts\\simsun.ttc",
+                "C:\\Windows\\Fonts\\msgothic.ttc",
+            };
+            for (const char* cjk : cjkFonts)
+                if (m_FontAtlas.AddFallbackFont(cjk))
+                { printf("[Font] CJK fallback: %s\n", cjk); break; }
+        }
+        else
+        {
+            printf("[Font] WARNING: No TTF found — text renders as blocky bars.\n");
+        }
+
+        m_Platform.Renderer.SetFontAtlas(m_FontAtlas.IsLoaded() ? &m_FontAtlas : nullptr);
+        return m_FontAtlas.IsLoaded();
+    }
 
     void BuildUI()
     {
@@ -392,25 +401,31 @@ public:
         // Title
         auto t = std::make_shared<ZSlate::STextBlock>();
         t->Text = "ZSlate Standalone Demo";
-        t->FontSize = 24;
-        t->Color = ZSlate::Colors::White;
+        t->FontSize = 24; t->Color = ZSlate::Colors::White;
         root->AddSlot(t);
         root->AddSlot(std::make_shared<ZSlate::SSpacer>(ZSlate::Vector2(0, 12)));
 
+        // Subtitle (demonstrates multi-line)
+        auto sub = std::make_shared<ZSlate::STextBlock>();
+        sub->Text = "Font atlas rendering via stb_truetype";
+        sub->FontSize = 14; sub->Color = ZSlate::UIColor(0.6f, 0.7f, 0.9f, 1.0f);
+        root->AddSlot(sub);
+        root->AddSlot(std::make_shared<ZSlate::SSpacer>(ZSlate::Vector2(0, 16)));
+
         // Button
         auto btn = std::make_shared<ZSlate::SButton>();
-        auto btnLabel = std::make_shared<ZSlate::STextBlock>();
-        btnLabel->Text = "Click Me";
-        btnLabel->Color = ZSlate::Colors::White;
-        btn->SetContent(btnLabel);
-        btn->OnClicked = []() { printf("[ZSlate] Button clicked!\n"); };
+        auto lbl = std::make_shared<ZSlate::STextBlock>();
+        lbl->Text = "Click Me"; lbl->Color = ZSlate::Colors::White;
+        btn->SetContent(lbl);
+        btn->OnClicked = []{ printf("[ZSlate] Click!\n"); };
         root->AddSlot(btn);
+        root->AddSlot(std::make_shared<ZSlate::SSpacer>(ZSlate::Vector2(0, 8)));
 
         // Checkbox
         auto cb = std::make_shared<ZSlate::SCheckBox>();
-        cb->SetLabel("Enable feature");
-        cb->Checked = true;
+        cb->SetLabel("Enable feature"); cb->Checked = true;
         root->AddSlot(cb);
+        root->AddSlot(std::make_shared<ZSlate::SSpacer>(ZSlate::Vector2(0, 8)));
 
         // Slider
         auto sl = std::make_shared<ZSlate::SSlider>();
@@ -423,146 +438,101 @@ public:
     void RunFrame()
     {
         m_Platform.Renderer.BeginFrame();
-        ZSlate::UIRect region(0, 0, m_Platform.GetWindowSize().x, m_Platform.GetWindowSize().y);
-        ZSlate::SlateApplication::Get().PaintInto(&m_Platform.Renderer, region);
+        ZSlate::UIRect r(0, 0, m_Platform.GetWindowSize().x, m_Platform.GetWindowSize().y);
+        ZSlate::SlateApplication::Get().PaintInto(&m_Platform.Renderer, r);
         m_Platform.Renderer.EndFrame();
     }
 };
 
 // ============================================================================
-// Main
+// Main — Win32 + D3D11
 // ============================================================================
-
 #ifdef _WIN32
 
 struct WinCtx { DemoApp* app; D3D11Backend* backend; };
 
-LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
+LRESULT CALLBACK WndProc(HWND hw, UINT msg, WPARAM wp, LPARAM lp)
 {
     WinCtx* ctx = nullptr;
-    if (msg == WM_CREATE)
-    {
+    if (msg == WM_CREATE) {
         ctx = (WinCtx*)((CREATESTRUCT*)lp)->lpCreateParams;
-        SetWindowLongPtr(hwnd, GWLP_USERDATA, (LONG_PTR)ctx);
+        SetWindowLongPtr(hw, GWLP_USERDATA, (LONG_PTR)ctx);
+    } else {
+        ctx = (WinCtx*)GetWindowLongPtr(hw, GWLP_USERDATA);
     }
-    else
-    {
-        ctx = (WinCtx*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
-    }
-
     DemoApp* app = ctx ? ctx->app : nullptr;
 
-    switch (msg)
-    {
-    case WM_SIZE:
-        if (app)
-        {
-            uint32_t w = LOWORD(lp), h = HIWORD(lp);
-            app->m_Platform.m_WinSize = ZSlate::Vector2((float)w, (float)h);
-            if (ctx->backend && w > 0 && h > 0) ctx->backend->Resize(w, h);
-        }
-        return 0;
-
+    switch (msg) {
+    case WM_SIZE: {
+        if (app) {
+            app->m_Platform.m_WinSize = ZSlate::Vector2((float)LOWORD(lp), (float)HIWORD(lp));
+            if (ctx->backend) ctx->backend->Resize(LOWORD(lp), HIWORD(lp));
+        } return 0; }
     case WM_MOUSEMOVE:
         if (app) app->m_Platform.m_MousePos = ZSlate::Vector2((float)LOWORD(lp), (float)HIWORD(lp));
         return 0;
-
-    case WM_LBUTTONDOWN: if (app) app->m_Platform.m_MouseDown[0] = true;  return 0;
-    case WM_LBUTTONUP:   if (app) app->m_Platform.m_MouseDown[0] = false; return 0;
-    case WM_RBUTTONDOWN: if (app) app->m_Platform.m_MouseDown[1] = true;  return 0;
-    case WM_RBUTTONUP:   if (app) app->m_Platform.m_MouseDown[1] = false; return 0;
-    case WM_MBUTTONDOWN: if (app) app->m_Platform.m_MouseDown[2] = true;  return 0;
-    case WM_MBUTTONUP:   if (app) app->m_Platform.m_MouseDown[2] = false; return 0;
-
-    case WM_DESTROY:
-        PostQuitMessage(0);
-        return 0;
+    case WM_LBUTTONDOWN: if (app) app->m_Platform.m_MouseDown[0]=true;  return 0;
+    case WM_LBUTTONUP:   if (app) app->m_Platform.m_MouseDown[0]=false; return 0;
+    case WM_RBUTTONDOWN: if (app) app->m_Platform.m_MouseDown[1]=true;  return 0;
+    case WM_RBUTTONUP:   if (app) app->m_Platform.m_MouseDown[1]=false; return 0;
+    case WM_MBUTTONDOWN: if (app) app->m_Platform.m_MouseDown[2]=true;  return 0;
+    case WM_MBUTTONUP:   if (app) app->m_Platform.m_MouseDown[2]=false; return 0;
+    case WM_DESTROY: PostQuitMessage(0); return 0;
     }
-    return DefWindowProc(hwnd, msg, wp, lp);
+    return DefWindowProc(hw, msg, wp, lp);
 }
 
 int main()
 {
-    printf("=== ZSlate Standalone (Win32 + D3D11) ===\n");
+    printf("=== ZSlate Standalone (Win32 + D3D11 + Font Atlas) ===\n");
 
     DemoApp app;
     D3D11Backend backend;
     ZSlate::SetPlatform(&app.m_Platform);
 
-    app.m_Platform.Renderer.SetTextMeasurerCallback(
-        [](const std::string& text, float fontSize) -> ZSlate::Vector2 {
-            return ZSlate::Vector2((float)text.length() * fontSize * 0.6f, fontSize * 1.2f);
-        });
-
+    app.InitFonts();
     app.BuildUI();
 
-    // ---- Create window -------------------------------------------------------
-    WNDCLASSA wc {};
-    wc.lpfnWndProc   = WndProc;
-    wc.hInstance     = GetModuleHandle(nullptr);
-    wc.hCursor       = LoadCursor(nullptr, IDC_ARROW);
-    wc.lpszClassName = "ZSlateDemoWindow";
+    WNDCLASSA wc {}; wc.lpfnWndProc=WndProc; wc.hInstance=GetModuleHandle(nullptr);
+    wc.hCursor=LoadCursor(nullptr, IDC_ARROW); wc.lpszClassName="ZSlateDemo";
     RegisterClassA(&wc);
 
-    int w = (int)app.m_Platform.m_WinSize.x;
-    int h = (int)app.m_Platform.m_WinSize.y;
-    WinCtx ctx = {&app, &backend};
-    HWND hwnd = CreateWindowA("ZSlateDemoWindow", "ZSlate Standalone Demo",
-                              WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT,
-                              w, h, nullptr, nullptr, GetModuleHandle(nullptr), &ctx);
+    WinCtx ctx{&app, &backend};
+    HWND hw = CreateWindowA("ZSlateDemo", "ZSlate Standalone Demo",
+        WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT,
+        (int)app.m_Platform.m_WinSize.x, (int)app.m_Platform.m_WinSize.y,
+        nullptr, nullptr, GetModuleHandle(nullptr), &ctx);
 
-    if (!backend.Init(hwnd))
-    {
-        printf("Failed to init D3D11 renderer.\n");
-        return 1;
-    }
+    if (!backend.Init(hw)) { printf("D3D11 init failed\n"); return 1; }
+    ShowWindow(hw, SW_SHOW);
 
-    ShowWindow(hwnd, SW_SHOW);
-
-    // ---- Message loop -------------------------------------------------------
     MSG msg {};
-    while (true)
-    {
-        while (PeekMessageA(&msg, nullptr, 0, 0, PM_REMOVE))
-        {
+    while (true) {
+        while (PeekMessageA(&msg, nullptr, 0, 0, PM_REMOVE)) {
             if (msg.message == WM_QUIT) goto cleanup;
-            TranslateMessage(&msg);
-            DispatchMessage(&msg);
+            TranslateMessage(&msg); DispatchMessage(&msg);
         }
-
         app.RunFrame();
-        backend.Render(app.m_Platform.Renderer);
+        backend.Render(app.m_Platform.Renderer, &app.m_FontAtlas);
 
-        static int fc = 0;
-        if (++fc % 120 == 0)
-            printf("[Frame %d] %zu cmds, %zu verts\n", fc,
-                   app.m_Platform.Renderer.GetCommands().size(),
-                   app.m_Platform.Renderer.GetVertices().size());
-
+        static int fc=0;
+        if (++fc%120==0) printf("[%d] %zu cmd, %zu v\n", fc,
+            app.m_Platform.Renderer.GetCommands().size(),
+            app.m_Platform.Renderer.GetVertices().size());
         Sleep(1);
     }
-
 cleanup:
     backend.Shutdown();
     return 0;
 }
 
-#else  // non-Windows
-
-int main()
-{
-    printf("=== ZSlate Standalone (Console Mode) ===\n");
-    printf("This example uses D3D11 on Windows.\n");
-    printf("For other platforms, adapt the render backend to GLFW/SDL + OpenGL/Vulkan.\n\n");
-
-    DemoApp app;
-    ZSlate::SetPlatform(&app.m_Platform);
-    app.BuildUI();
-
-    printf("Press Enter to exit after 3 demo frames...\n");
-    for (int i = 0; i < 3; i++) app.RunFrame();
-    getchar();
-    return 0;
+#else
+int main() {
+    printf("=== ZSlate (Console) ===\n");
+    printf("This example uses D3D11 on Windows. Adapt for other platforms.\n");
+    DemoApp app; ZSlate::SetPlatform(&app.m_Platform);
+    app.InitFonts(); app.BuildUI();
+    for (int i=0;i<3;i++) app.RunFrame();
+    getchar(); return 0;
 }
-
 #endif

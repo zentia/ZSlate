@@ -1,4 +1,6 @@
 #include "ZSlate/Renderer/ZSlateBatchedRenderer.h"
+#include "ZSlate/Renderer/ZSlateFontAtlas.h"
+#include "ZSlate/Renderer/ZSlateTextGenerator.h"
 
 #include <algorithm>
 #include <cmath>
@@ -40,12 +42,20 @@ namespace
 
 ZSlateBatchedRenderer::ZSlateBatchedRenderer()
 {
-    // Enough for ~1024 quads per frame; grows if needed
     m_Vertices.reserve(4096);
     m_Indices.reserve(6144);
     m_Commands.reserve(128);
     m_ClipStack.reserve(16);
     m_Outlines.reserve(32);
+}
+
+void ZSlateBatchedRenderer::SetFontAtlas(ZSlateFontAtlas* atlas)
+{
+    m_FontAtlas = atlas;
+    if (m_FontAtlas)
+        m_TextGen = std::make_unique<ZSlateTextGenerator>();
+    else
+        m_TextGen.reset();
 }
 
 // ---- Frame lifecycle --------------------------------------------------------
@@ -291,13 +301,32 @@ void ZSlateBatchedRenderer::DrawText(const UIRect& rect, const std::string& text
                                   const UIColor& color, TextAnchor alignment,
                                   TextWrapMode wrap, void* fontHandle)
 {
-    (void)wrap; (void)fontHandle;
+    (void)fontHandle;
 
     if (text.empty() || !m_Active) return;
 
+    if (m_FontAtlas && m_TextGen)
+    {
+        // Real glyph rendering via font atlas
+        ZSlateTextGenerator::Settings s;
+        s.rect = rect;
+        s.font_size = fontSize;
+        s.alignment = alignment;
+        s.wrap = wrap;
+        m_TextGen->Generate(*m_FontAtlas, text, s);
+
+        for (const auto& g : m_TextGen->GetGlyphs())
+        {
+            AppendTexturedQuad(g.dest, color, kFontAtlasTextureId,
+                               g.uv0.x, g.uv0.y, g.uv1.x, g.uv1.y);
+        }
+        return;
+    }
+
+    // Fallback: per-character vertical bars (no font atlas)
     Vector2 measure = MeasureText(text, fontSize);
     float offsetX = rect.x;
-    float offsetY = rect.y + (rect.h - measure.y) * 0.5f;  // vertically center
+    float offsetY = rect.y + (rect.h - measure.y) * 0.5f;
 
     switch (alignment)
     {
@@ -308,9 +337,6 @@ void ZSlateBatchedRenderer::DrawText(const UIRect& rect, const std::string& text
     default: break;
     }
 
-    // Without a font atlas, render each character as a thin vertical bar
-    // (width = 0.55 * fontSize, gap = 0.05 * fontSize).  Looks like blocky
-    // "LED-style" text — not beautiful, but perfectly readable for debugging.
     float charWidth  = fontSize * 0.55f;
     float charGap    = fontSize * 0.05f;
     float charStep   = charWidth + charGap;
@@ -318,7 +344,7 @@ void ZSlateBatchedRenderer::DrawText(const UIRect& rect, const std::string& text
 
     for (size_t i = 0; i < text.length(); ++i)
     {
-        if (offsetX + charWidth > rect.Right()) break;  // clip to rect
+        if (offsetX + charWidth > rect.Right()) break;
         UIRect chRect(offsetX + static_cast<float>(i) * charStep,
                        offsetY + (measure.y - barHeight) * 0.5f,
                        charWidth, barHeight);
@@ -334,12 +360,16 @@ void ZSlateBatchedRenderer::DrawText(const std::string& text, const Vector2& pos
 
 Vector2 ZSlateBatchedRenderer::MeasureText(const std::string& text, float fontSize) const
 {
+    // Use font atlas if available
+    if (m_FontAtlas && m_TextGen)
+        return ZSlateTextGenerator::Measure(*m_FontAtlas, text, fontSize,
+                                             TextWrapMode::NoWrap, 0.0f);
+
     if (m_TextMeasurer)
         return m_TextMeasurer(text, fontSize);
 
-    // Default: rough ASCII estimate (0.6 * fontSize per char)
-    float avgCharWidth = fontSize * 0.6f;
-    return Vector2(static_cast<float>(text.length()) * avgCharWidth, fontSize * 1.2f);
+    // Default: rough ASCII estimate
+    return Vector2(static_cast<float>(text.length()) * fontSize * 0.6f, fontSize * 1.2f);
 }
 
 }  // namespace ZSlate

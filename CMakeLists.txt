@@ -20,6 +20,7 @@ add_library(ZSlate STATIC
 
 target_include_directories(ZSlate PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty
 )
 
 # Compile options

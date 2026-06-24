@@ -24,8 +24,11 @@
 
 #include "ZSlate/Core/SlatePaint.h"
 #include "ZSlate/Core/SlateGeometry.h"
+#include "ZSlate/Renderer/ZSlateFontAtlas.h"
+#include "ZSlate/Renderer/ZSlateTextGenerator.h"
 
 #include <cstdint>
+#include <memory>
 #include <vector>
 
 namespace ZSlate
@@ -75,6 +78,16 @@ public:
     // --- Optional text measurer ----------------------------------------------
     void SetTextMeasurerCallback(ZSBTextMeasureFunc fn) { m_TextMeasurer = std::move(fn); }
 
+    // --- Optional font atlas -------------------------------------------------
+    // Attach a ZSlateFontAtlas for real glyph rendering. nullptr = fallback to
+    // blocky per-character bars (visible but not pretty).
+    void SetFontAtlas(ZSlateFontAtlas* atlas);
+    ZSlateFontAtlas* GetFontAtlas() const { return m_FontAtlas; }
+
+    // Magic texture ID for font atlas glyphs (0x1).  The GPU backend should
+    // bind the atlas texture when it sees this ID in a draw command.
+    static constexpr void* kFontAtlasTextureId = reinterpret_cast<void*>(0x1);
+
     // --- ISlateRenderer interface (PascalCase) -------------------------------
     void DrawQuad(const UIRect& rect, const UIColor& color) override;
     void DrawRect(const UIRect& rect, const UIColor& color, float thickness = 1.0f) override;
@@ -121,6 +134,10 @@ private:
     std::vector<OutlineCmd> m_Outlines;
 
     ZSBTextMeasureFunc m_TextMeasurer;
+
+    // Font atlas (optional — nullptr → blocky placeholder text)
+    ZSlateFontAtlas* m_FontAtlas {nullptr};
+    std::unique_ptr<ZSlateTextGenerator> m_TextGen;
 };
 
 }  // namespace ZSlate
