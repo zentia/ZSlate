@@ -1,5 +1,8 @@
 MSBuild version 17.14.40+3e7442088 for .NET Framework
 
+cl : command line  warning D9035: option 'experimental:preprocessor' has been deprecated and will be removed in a future release [E:\Engine\ZEngine\engine\Libraries\ZSlate\build\ZSlate.vcxproj]
+cl : command line  warning D9036: use 'Zc:preprocessor' instead of 'experimental:preprocessor' [E:\Engine\ZEngine\engine\Libraries\ZSlate\build\ZSlate.vcxproj]
+  ZSlateD3D11Renderer.cpp
   ZSlate.vcxproj -> E:\Engine\ZEngine\engine\Libraries\ZSlate\build\Debug\ZSlate.lib
   standalone_app_example.cpp
 E:\Engine\ZEngine\engine\Libraries\ZSlate\examples\standalone_app_example.cpp(1,1): warning C4819: The file contains a character that cannot be represented in the current code page (936). Save the file in Unicode format to prevent data loss [E:\Engine\ZEngine\engine\Libraries\ZSlate\build\examples\ZSlateStandaloneApp.vcxproj]
@@ -9,38 +12,16 @@ E:\Engine\ZEngine\engine\Libraries\ZSlate\include\ZSlate\Renderer\ZSlateBatchedR
 E:\Engine\ZEngine\engine\Libraries\ZSlate\include\ZSlate\Renderer\ZSlateFontAtlas.h(1,1): warning C4819: The file contains a character that cannot be represented in the current code page (936). Save the file in Unicode format to prevent data loss [E:\Engine\ZEngine\engine\Libraries\ZSlate\build\examples\ZSlateStandaloneApp.vcxproj]
   (compiling source file '../../examples/standalone_app_example.cpp')
   
+E:\Engine\ZEngine\engine\Libraries\ZSlate\include\ZSlate\Renderer\ZSlateTextGenerator.h(1,1): warning C4819: The file contains a character that cannot be represented in the current code page (936). Save the file in Unicode format to prevent data loss [E:\Engine\ZEngine\engine\Libraries\ZSlate\build\examples\ZSlateStandaloneApp.vcxproj]
+  (compiling source file '../../examples/standalone_app_example.cpp')
+  
+E:\Engine\ZEngine\engine\Libraries\ZSlate\include\ZSlate\Platform\D3D11\ZSlateD3D11Renderer.h(1,1): warning C4819: The file contains a character that cannot be represented in the current code page (936). Save the file in Unicode format to prevent data loss [E:\Engine\ZEngine\engine\Libraries\ZSlate\build\examples\ZSlateStandaloneApp.vcxproj]
+  (compiling source file '../../examples/standalone_app_example.cpp')
+  
 E:\Engine\ZEngine\engine\Libraries\ZSlate\include\ZSlate\Widgets\Panels\SBorder.h(1,1): warning C4819: The file contains a character that cannot be represented in the current code page (936). Save the file in Unicode format to prevent data loss [E:\Engine\ZEngine\engine\Libraries\ZSlate\build\examples\ZSlateStandaloneApp.vcxproj]
   (compiling source file '../../examples/standalone_app_example.cpp')
   
 E:\Engine\ZEngine\engine\Libraries\ZSlate\include\ZSlate\Widgets\SCompoundWidget.h(1,1): warning C4819: The file contains a character that cannot be represented in the current code page (936). Save the file in Unicode format to prevent data loss [E:\Engine\ZEngine\engine\Libraries\ZSlate\build\examples\ZSlateStandaloneApp.vcxproj]
   (compiling source file '../../examples/standalone_app_example.cpp')
   
-C:\Program Files\Microsoft Visual Studio\2022\Professional\VC\Tools\MSVC\14.44.35207\include\memory(3308,27): error C2027: use of undefined type 'ZSlate::ZSlateTextGenerator' [E:\Engine\ZEngine\engine\Libraries\ZSlate\build\examples\ZSlateStandaloneApp.vcxproj]
-  (compiling source file '../../examples/standalone_app_example.cpp')
-      E:\Engine\ZEngine\engine\Libraries\ZSlate\include\ZSlate\Renderer\ZSlateBatchedRenderer.h(36,7):
-      see declaration of 'ZSlate::ZSlateTextGenerator'
-      C:\Program Files\Microsoft Visual Studio\2022\Professional\VC\Tools\MSVC\14.44.35207\include\memory(3308,27):
-      the template instantiation context (the oldest one first) is
-          E:\Engine\ZEngine\engine\Libraries\ZSlate\include\ZSlate\Renderer\ZSlateBatchedRenderer.h(141,42):
-          see reference to class template instantiation 'std::unique_ptr<ZSlate::ZSlateTextGenerator,std::default_delete<ZSlate::ZSlateTextGenerator>>' being compiled
-          C:\Program Files\Microsoft Visual Studio\2022\Professional\VC\Tools\MSVC\14.44.35207\include\memory(3352,92):
-          see reference to class template instantiation 'std::default_delete<ZSlate::ZSlateTextGenerator>' being compiled
-          C:\Program Files\Microsoft Visual Studio\2022\Professional\VC\Tools\MSVC\14.44.35207\include\memory(3307,23):
-          while compiling class template member function 'void std::default_delete<ZSlate::ZSlateTextGenerator>::operator ()(_Ty *) noexcept const'
-          with
-          [
-              _Ty=ZSlate::ZSlateTextGenerator
-          ]
-              C:\Program Files\Microsoft Visual Studio\2022\Professional\VC\Tools\MSVC\14.44.35207\include\memory(3427,33):
-              see the first reference to 'std::default_delete<ZSlate::ZSlateTextGenerator>::operator ()' in 'std::unique_ptr<ZSlate::ZSlateTextGenerator,std::default_delete<ZSlate::ZSlateTextGenerator>>::~unique_ptr'
-              E:\Engine\ZEngine\engine\Libraries\ZSlate\include\ZSlate\Renderer\ZSlateBatchedRenderer.h(71,6):
-              see the first reference to 'std::unique_ptr<ZSlate::ZSlateTextGenerator,std::default_delete<ZSlate::ZSlateTextGenerator>>::~unique_ptr' in 'ZSlate::ZSlateBatchedRenderer::~ZSlateBatchedRenderer'
-  
-C:\Program Files\Microsoft Visual Studio\2022\Professional\VC\Tools\MSVC\14.44.35207\include\memory(3308,25): error C2338: static_assert failed: 'can't delete an incomplete type' [E:\Engine\ZEngine\engine\Libraries\ZSlate\build\examples\ZSlateStandaloneApp.vcxproj]
-  (compiling source file '../../examples/standalone_app_example.cpp')
-  
-C:\Program Files\Microsoft Visual Studio\2022\Professional\VC\Tools\MSVC\14.44.35207\include\memory(3309,9): warning C4150: deletion of pointer to incomplete type 'ZSlate::ZSlateTextGenerator'; no destructor called [E:\Engine\ZEngine\engine\Libraries\ZSlate\build\examples\ZSlateStandaloneApp.vcxproj]
-  (compiling source file '../../examples/standalone_app_example.cpp')
-      E:\Engine\ZEngine\engine\Libraries\ZSlate\include\ZSlate\Renderer\ZSlateBatchedRenderer.h(36,7):
-      see declaration of 'ZSlate::ZSlateTextGenerator'
-  
+  ZSlateStandaloneApp.vcxproj -> E:\Engine\ZEngine\engine\Libraries\ZSlate\build\bin\Debug\ZSlateStandaloneApp.exe
