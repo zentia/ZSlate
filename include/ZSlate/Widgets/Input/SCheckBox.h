@@ -1,70 +1,53 @@
 #pragma once
 
-#include "ZSlate/Widgets/SLeafWidget.h"
+// SCheckBox: a checkable toggle box with a label.
+// UE analogue: Widgets/Input/SCheckBox.h
+// TODO: replace with full implementation from ZSlate submodule.
+
+#include "ZSlate/Widgets/SCompoundWidget.h"
 
 #include <functional>
+#include <string>
 
 namespace ZSlate
 {
-// A square toggle (UE Slate SCheckBox analogue). Renders a box with a filled
-// inner mark when checked; toggles on click and reports via OnCheckStateChanged.
-class SCheckBox : public SLeafWidget
+
+class SCheckBox : public SCompoundWidget
 {
 public:
-    bool Checked {false};
-    float BoxSize {18.0f};
-    UIColor BorderColor {0.45f, 0.46f, 0.50f, 1.0f};
-    UIColor BackgroundColor {0.16f, 0.16f, 0.19f, 1.0f};
-    UIColor HoverColor {0.22f, 0.22f, 0.26f, 1.0f};
-    UIColor CheckColor {0.36f, 0.62f, 0.96f, 1.0f};
+    SCheckBox() = default;
+    virtual ~SCheckBox() = default;
 
-    std::function<void(bool)> OnCheckStateChanged;
+    void SetChecked(bool c) { m_Checked = c; }
+    bool IsChecked() const { return m_Checked; }
+    void SetLabel(const std::string& l) { m_Label = l; }
+    void SetOnCheckStateChanged(std::function<void(bool)> fn) { m_OnChanged = fn; }
 
-    Vector2 ComputeDesiredSize() const override { return Vector2(BoxSize, BoxSize); }
+    Vector2 ComputeDesiredSize() const override { return Vector2(200.0f, 24.0f); }
+    void ArrangeChildren(const FGeometry& geom, std::vector<FArrangedWidget>& out) const override { (void)geom; (void)out; }
 
     void OnPaint(const FPaintContext& ctx, const FGeometry& geom) const override
     {
-        if (ctx.Renderer == nullptr)
-            return;
-        const UIRect rect = geom.ToRect();
-        ctx.Renderer->drawQuad(rect, m_Hovered ? HoverColor : BackgroundColor);
-        ctx.Renderer->drawRect(rect, BorderColor, 1.0f);
-        if (Checked)
+        if (ctx.Renderer)
         {
-            const float inset = rect.w * 0.25f;
-            const UIRect mark(rect.x + inset, rect.y + inset, rect.w - inset * 2.0f, rect.h - inset * 2.0f);
-            ctx.Renderer->drawQuad(mark, CheckColor);
+            const UIRect rect = geom.ToRect();
+            ctx.Renderer->drawQuad(rect, UIColor(0.12f, 0.12f, 0.14f, 1.0f));
+            const float box_sz = 14.0f;
+            const UIRect box_rect(rect.x + 4.0f, rect.y + (rect.h - box_sz) * 0.5f, box_sz, box_sz);
+            ctx.Renderer->drawQuad(box_rect, m_Checked ? UIColor(0.30f, 0.55f, 0.95f, 1.0f) : UIColor(0.20f, 0.20f, 0.22f, 1.0f));
+            if (!m_Label.empty())
+            {
+                const UIRect label_rect(rect.x + box_sz + 10.0f, rect.y, rect.w - box_sz - 14.0f, rect.h);
+                ctx.Renderer->drawText(label_rect, m_Label, 13.0f, UIColor(0.88f, 0.89f, 0.92f, 1.0f),
+                                       TextAnchor::MiddleLeft, TextWrapMode::NoWrap);
+            }
         }
-    }
-
-    void OnMouseEnter() override { m_Hovered = true; }
-    void OnMouseLeave() override { m_Hovered = false; }
-
-    FReply OnMouseButtonDown(const Vector2& /*pos*/, int button) override
-    {
-        if (button != 0)
-            return FReply::Unhandled();
-        m_Pressed = true;
-        return FReply::Handled().CaptureMouse(this);
-    }
-
-    FReply OnMouseButtonUp(const Vector2& pos, int button) override
-    {
-        if (button != 0)
-            return FReply::Unhandled();
-        const bool was_pressed = m_Pressed;
-        m_Pressed = false;
-        if (was_pressed && m_CachedGeometry.IsUnderLocation(pos))
-        {
-            Checked = !Checked;
-            if (OnCheckStateChanged)
-                OnCheckStateChanged(Checked);
-        }
-        return FReply::Handled().ReleaseMouseCapture();
     }
 
 private:
-    bool m_Hovered {false};
-    bool m_Pressed {false};
+    bool m_Checked {false};
+    std::string m_Label;
+    std::function<void(bool)> m_OnChanged;
 };
+
 }  // namespace ZSlate

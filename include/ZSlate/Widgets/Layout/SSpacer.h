@@ -1,30 +1,29 @@
 #pragma once
 
-#include "ZSlate/Widgets/SLeafWidget.h"
-#include "ZSlate/Core/ZSlateTypes.h"
+// SSpacer: an empty widget with a configurable desired size.
+// UE analogue: Widgets/Layout/SSpacer.h
+// TODO: replace with full implementation from ZSlate submodule.
+
+#include "ZSlate/Widgets/SWidget.h"
 
 namespace ZSlate
 {
-// A spacer widget (empty layout filler with fixed size).
-// Similar to UE's SSpacer.
-class SSpacer : public SLeafWidget
+
+class SSpacer : public SWidget
 {
 public:
-    Vector2 Size {0.0f, 0.0f};
-
     SSpacer() = default;
-    explicit SSpacer(const Vector2& size) : Size(size) {}
+    explicit SSpacer(const Vector2& size) : m_Size(size) {}
+    virtual ~SSpacer() = default;
 
-    Vector2 ComputeDesiredSize() const override
-    {
-        return Size;
-    }
+    void SetSize(const Vector2& s) { m_Size = s; }
 
-    void OnPaint(const FPaintContext& ctx, const FGeometry& geom) const override
-    {
-        // Spacer is invisible - does not paint anything
-        (void)ctx;
-        (void)geom;
-    }
+    Vector2 ComputeDesiredSize() const override { return m_Size; }
+    void ArrangeChildren(const FGeometry& geom, std::vector<FArrangedWidget>& out) const override { (void)geom; (void)out; }
+    void OnPaint(const FPaintContext& ctx, const FGeometry& geom) const override { (void)ctx; (void)geom; }
+
+private:
+    Vector2 m_Size {0.0f, 0.0f};
 };
+
 }  // namespace ZSlate
