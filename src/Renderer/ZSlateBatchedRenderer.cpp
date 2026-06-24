@@ -256,17 +256,21 @@ void ZSlateBatchedRenderer::DrawText(const UIRect& rect, const std::string& text
 
     if (m_FontAtlas && m_TextGen)
     {
-        // Real glyph rendering via font atlas
+        // Real glyph rendering via font atlas — snap to pixel grid for sharp text
         ZSlateTextGenerator::Settings s;
-        s.rect = rect;
-        s.font_size = fontSize;
+        s.rect = UIRect(std::round(rect.x), std::round(rect.y),
+                        std::ceil(rect.w), std::ceil(rect.h));
+        s.font_size = std::round(fontSize);
         s.alignment = alignment;
         s.wrap = wrap;
         m_TextGen->Generate(*m_FontAtlas, text, s);
 
         for (const auto& g : m_TextGen->GetGlyphs())
         {
-            AppendTexturedQuad(g.dest, color, kFontAtlasTextureId,
+            UIRect snapped(std::round(g.dest.x), std::round(g.dest.y),
+                           std::ceil(g.dest.x + g.dest.w) - std::round(g.dest.x),
+                           std::ceil(g.dest.y + g.dest.h) - std::round(g.dest.y));
+            AppendTexturedQuad(snapped, color, kFontAtlasTextureId,
                                g.uv0.x, g.uv0.y, g.uv1.x, g.uv1.y);
         }
         return;

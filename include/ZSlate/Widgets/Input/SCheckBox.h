@@ -72,10 +72,11 @@ public:
     void OnMouseEnter() override { m_Hovered = true; }
     void OnMouseLeave() override { m_Hovered = false; }
 
-    FReply OnMouseButtonDown(const Vector2& /*pos*/, int button) override
+    FReply OnMouseButtonDown(const Vector2& pos, int button) override
     {
         if (button != 0) return FReply::Unhandled();
         Checked = !Checked;
+        fprintf(stderr, "[SCheckBox] toggled to %d (pos %.0f,%.0f)\n", (int)Checked, pos.x, pos.y);
         if (OnCheckStateChanged) OnCheckStateChanged(Checked);
         return FReply::Handled();
     }
