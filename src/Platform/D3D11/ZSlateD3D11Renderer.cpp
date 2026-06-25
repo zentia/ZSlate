@@ -263,6 +263,8 @@ void ZSlateD3D11Renderer::Render(ZSlateBatchedRenderer& batch, ZSlateFontAtlas* 
         ID3D11ShaderResourceView* srv = m_WhiteSRV;
         if (cmd.TextureId == ZSlateBatchedRenderer::kFontAtlasTextureId && m_FontSRV)
             srv = m_FontSRV;
+        else if (cmd.TextureId != nullptr && cmd.TextureId != ZSlateBatchedRenderer::kFontAtlasTextureId)
+            srv = static_cast<ID3D11ShaderResourceView*>(cmd.TextureId);  // custom textures (e.g. TexPreview)
         m_Context->PSSetShaderResources(0, 1, &srv);
 
         if (cmd.HasClip) {
