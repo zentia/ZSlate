@@ -1,6 +1,7 @@
 #include "ZSlate/Widgets/Views/SListView.h"
 
 #include <algorithm>
+#include <string>
 
 namespace ZSlate
 {
@@ -202,5 +203,6 @@ void SListView<ItemType>::OnMouseCaptureLost()
 
 // Explicit instantiation
 template class SListView<int32_t>;
+template class SListView<std::string>;
 
 }  // namespace ZSlate

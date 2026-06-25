@@ -268,9 +268,9 @@ void ZSlateD3D11Renderer::Render(ZSlateBatchedRenderer& batch, ZSlateFontAtlas* 
         m_Context->PSSetShaderResources(0, 1, &srv);
 
         if (cmd.HasClip) {
-            D3D11_RECT sc = {(LONG)std::max(cmd.ClipRect.x,0.0f),(LONG)std::max(cmd.ClipRect.y,0.0f),
-                             (LONG)std::max(cmd.ClipRect.x+cmd.ClipRect.w,0.0f),
-                             (LONG)std::max(cmd.ClipRect.y+cmd.ClipRect.h,0.0f)};
+            D3D11_RECT sc = {(LONG)(std::max)(cmd.ClipRect.x,0.0f),(LONG)(std::max)(cmd.ClipRect.y,0.0f),
+                             (LONG)(std::max)(cmd.ClipRect.x+cmd.ClipRect.w,0.0f),
+                             (LONG)(std::max)(cmd.ClipRect.y+cmd.ClipRect.h,0.0f)};
             m_Context->RSSetScissorRects(1, &sc);
         } else {
             D3D11_RECT full={0,0,(LONG)m_Width,(LONG)m_Height}; m_Context->RSSetScissorRects(1, &full);

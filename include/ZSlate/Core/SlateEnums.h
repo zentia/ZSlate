@@ -61,4 +61,26 @@ enum class ECursorType
     ResizeAll,
     TextBeam,
 };
+
+// Text alignment within a rectangle
+enum class TextAnchor
+{
+    MiddleLeft,
+    MiddleCenter,
+    MiddleRight,
+    TopLeft,
+    TopCenter,
+    TopRight,
+    BottomLeft,
+    BottomCenter,
+    BottomRight,
+};
+
+// Text wrap mode
+enum class TextWrapMode
+{
+    NoWrap,
+    Wrap,
+};
+
 }  // namespace ZSlate

@@ -4,6 +4,8 @@
 // UE analogue: Widgets/Input/SEditableTextBox.h
 // TODO: replace with full implementation from ZSlate submodule.
 
+#define ZSLATE_SEDITABLETEXTBOX_DEFINED
+
 #include "ZSlate/Widgets/SWidget.h"
 
 #include <functional>
