@@ -1,101 +1,172 @@
 #pragma once
 
 #include "ZSlate/Widgets/SPanel.h"
-#include "ZSlate/Widgets/SHeaderRow.h"
+#include "ZSlate/Widgets/Views/SHeaderRow.h"
+#include "ZSlate/Widgets/Layout/SScrollBar.h"
 
-#include <functional>
+#include <cmath>
+#include <cstdint>
+#include <memory>
+#include <set>
 #include <vector>
 
 namespace ZSlate
 {
 
 // =============================================================================
-// STableViewBase — base class for table/list views (UE STableViewBase analogue)
+// STableViewBase — non-templated base for list/table/tree views
 // =============================================================================
 //
-// Provides column-header integration via SHeaderRow and a common
-// interface for table/list views.
+// Provides scroll management, selection, scroll bar integration, and
+// item layout. Templated views (SListView, STreeView, STileView) inherit
+// from this to share scrolling and selection logic.
 //
-template <typename ItemType>
 class STableViewBase : public SPanel
 {
 public:
-    // Attach a header row for column-based views
-    void SetHeaderRow(std::shared_ptr<SHeaderRow> header)
+    // ---- Configuration -------------------------------------------------------
+
+    EOrientation Orientation {EOrientation::Vertical};
+    float ItemHeight {24.0f};
+    float ItemWidth  {0.0f};  // 0 = fill available width
+
+    // ---- Selection -----------------------------------------------------------
+
+    enum class ESelectionMode { None, Single, Multi };
+
+    ESelectionMode SelectionMode {ESelectionMode::Single};
+
+    bool IsSelected(int32_t index) const
     {
-        m_HeaderRow = std::move(header);
+        return m_SelectedIndices.count(index) > 0;
     }
+
+    void SetSelected(int32_t index, bool selected)
+    {
+        if (selected)
+        {
+            if (SelectionMode == ESelectionMode::Single)
+                m_SelectedIndices.clear();
+            m_SelectedIndices.insert(index);
+        }
+        else
+        {
+            m_SelectedIndices.erase(index);
+        }
+    }
+
+    void ClearSelection() { m_SelectedIndices.clear(); }
+
+    int32_t GetSelectedCount() const { return static_cast<int32_t>(m_SelectedIndices.size()); }
+
+    // ---- Scroll --------------------------------------------------------------
+
+    float GetScrollOffset() const { return m_ScrollOffset; }
+    void SetScrollOffset(float offset) { m_ScrollOffset = offset; }
+
+    void ScrollToTop() { m_ScrollOffset = 0.0f; }
+    void ScrollToBottom(int32_t totalItems, float viewLength)
+    {
+        float totalLen = totalItems * ItemHeight;
+        m_ScrollOffset = std::max(0.0f, totalLen - viewLength);
+    }
+
+    void ScrollBy(float delta)
+    {
+        m_ScrollOffset -= delta;
+    }
+
+    void ScrollIntoView(int32_t index, float viewLength)
+    {
+        float top = index * ItemHeight;
+        float bot = top + ItemHeight;
+        float curTop = m_ScrollOffset;
+        float curBot = m_ScrollOffset + viewLength;
+
+        if (top < curTop)
+            m_ScrollOffset = top;
+        else if (bot > curBot)
+            m_ScrollOffset = bot - viewLength;
+    }
+
+    // ---- Scroll Bar ----------------------------------------------------------
+
+    void SetScrollBar(std::shared_ptr<SScrollBar> bar) { m_ScrollBar = std::move(bar); }
+    std::shared_ptr<SScrollBar> GetScrollBar() const { return m_ScrollBar; }
+
+    // ---- Header Row ----------------------------------------------------------
+
+    void SetHeaderRow(std::shared_ptr<SHeaderRow> header) { m_HeaderRow = std::move(header); }
     std::shared_ptr<SHeaderRow> GetHeaderRow() const { return m_HeaderRow; }
 
-    // Selection tracking
-    mutable int32_t SelectedIndex {-1};
-    std::function<void(const ItemType&, int32_t)> OnSelectionChanged;
+    // ---- Rebuild notification ------------------------------------------------
 
-    // Row height (pixels)
-    float RowHeight {24.0f};
+    void RequestRefresh() { m_NeedsRefresh = true; }
+    bool IsPendingRefresh() const { return m_NeedsRefresh; }
+    void CompleteRefresh() { m_NeedsRefresh = false; }
 
-    // ---- Layout --------------------------------------------------------------
+    // ---- Layout helpers (called by derived paint/arrange) --------------------
 
-    Vector2 ComputeDesiredSize() const override
+    float GetHeaderHeight() const
     {
-        float totalW = 0.0f;
-        float headerH = 0.0f;
-
-        if (m_HeaderRow)
-        {
-            totalW = m_HeaderRow->ComputeDesiredSize().x;
-            headerH = m_HeaderRow->GetDesiredSize().y;
-        }
-
-        float rowsH = GetRowCount() * RowHeight;
-        return Vector2(totalW, headerH + rowsH);
+        return m_HeaderRow ? m_HeaderRow->GetDesiredSize().y : 0.0f;
     }
 
-    // Derived classes implement these
-    virtual int32_t GetRowCount() const = 0;
-    virtual const ItemType* GetItemAt(int32_t index) const = 0;
+    void ClampScrollOffset(int32_t totalItems, float viewLength)
+    {
+        float totalLen = totalItems * ItemHeight;
+        m_ScrollOffset = std::clamp(m_ScrollOffset, 0.0f, std::max(0.0f, totalLen - viewLength));
+    }
 
-protected:
-    std::shared_ptr<SHeaderRow> m_HeaderRow;
+    void SyncScrollBar(int32_t totalItems, float viewLength)
+    {
+        if (!m_ScrollBar) return;
+        float totalLen = totalItems * ItemHeight;
+        m_ScrollBar->ViewFraction = (totalLen > 0.0f) ? std::min(1.0f, viewLength / totalLen) : 1.0f;
+        if (totalLen > viewLength)
+            m_ScrollBar->Value = m_ScrollOffset / (totalLen - viewLength);
+        else
+            m_ScrollBar->Value = 0.0f;
 
-    // Paint the header and row background
+        // Read back from scroll bar
+        float fromBar = m_ScrollBar->Value * std::max(0.0f, totalLen - viewLength);
+        if (std::abs(fromBar - m_ScrollOffset) > 0.5f)
+            m_ScrollOffset = fromBar;
+    }
+
+    // ---- Input ---------------------------------------------------------------
+
+    FReply OnMouseWheel(const Vector2&, float delta) override
+    {
+        ScrollBy(delta * 60.0f);
+        return FReply::Handled();
+    }
+
+    // ---- Painting header -----------------------------------------------------
+
     void PaintHeader(const FPaintContext& ctx, const FGeometry& geom) const
     {
-        if (!m_HeaderRow) return;
-        std::vector<FArrangedChild> arranged;
-        m_HeaderRow->OnArrangeChildren(geom, arranged);
-        m_HeaderRow->OnPaint(ctx, geom);
+        if (!m_HeaderRow || !ctx.Renderer) return;
+        float hh = GetHeaderHeight();
+        FGeometry headerGeom = geom.MakeChild(Vector2(0, 0), Vector2(geom.ToRect().w, hh));
+        m_HeaderRow->Paint(ctx, headerGeom);
     }
 
-    void PaintRowBackground(const FPaintContext& ctx,
-                            const UIRect& rowRect,
-                            int32_t index) const
-    {
-        if (!ctx.Renderer) return;
+protected:
+    float m_ScrollOffset {0.0f};
+    std::shared_ptr<SScrollBar> m_ScrollBar;
+    std::shared_ptr<SHeaderRow> m_HeaderRow;
 
-        if (index == SelectedIndex)
-            ctx.Renderer->DrawQuad(rowRect, UIColor(0.18f, 0.35f, 0.62f, 1.0f));
-        else if (index % 2 == 0)
-            ctx.Renderer->DrawQuad(rowRect, UIColor(0.10f, 0.10f, 0.13f, 1.0f));
-        else
-            ctx.Renderer->DrawQuad(rowRect, UIColor(0.12f, 0.12f, 0.15f, 1.0f));
+    // Selected indices (for multi-select)
+    std::set<int32_t> m_SelectedIndices;
 
-        // Bottom divider
-        ctx.Renderer->DrawRect(
-            UIRect(rowRect.x, rowRect.Bottom() - 1.0f, rowRect.w, 1.0f),
-            UIColor(0.08f, 0.08f, 0.10f, 1.0f), 1.0f);
-    }
-
-    // Generic hit-test for row index
-    int32_t HitTestRow(const Vector2& pos, const UIRect& view) const
-    {
-        float headerH = m_HeaderRow ? m_HeaderRow->GetDesiredSize().y : 0.0f;
-        float rowY = pos.y - view.y - headerH;
-        if (rowY < 0) return -1;
-        int32_t idx = static_cast<int32_t>(rowY / RowHeight);
-        if (idx < 0 || idx >= GetRowCount()) return -1;
-        return idx;
-    }
+    bool m_NeedsRefresh {true};
 };
+
+// =============================================================================
+// SHeaderRow forward — defined in Views/ (moved from Widgets/ root)
+// =============================================================================
+// Include-d this header from SHeaderRow.h in Widgets/ directly.
+// The canonical location for SHeaderRow is now Views/SHeaderRow.h.
 
 }  // namespace ZSlate
