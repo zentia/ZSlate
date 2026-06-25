@@ -118,6 +118,9 @@ public:
     // Only fully-Visible widgets participate in hit-testing.
     bool IsHitTestVisible() const { return Visibility == EVisibility::Visible; }
 
+    // Convenience: should this widget participate in layout/paint?
+    bool IsVisible() const { return Visibility != EVisibility::Collapsed && Visibility != EVisibility::Hidden; }
+
     // Last geometry this widget was painted into; used for hit-testing.
     const FGeometry& GetCachedGeometry() const { return m_CachedGeometry; }
 
