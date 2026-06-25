@@ -294,9 +294,9 @@ void ZSlateBatchedRenderer::DrawText(const UIRect& rect, const std::string& text
 
     switch (alignment)
     {
-    case TextAnchor::UpperRight: case TextAnchor::MiddleRight: case TextAnchor::LowerRight:
+    case TextAnchor::TopRight: case TextAnchor::MiddleRight: case TextAnchor::BottomRight:
         offsetX = rect.Right() - measure.x; break;
-    case TextAnchor::UpperCenter: case TextAnchor::MiddleCenter: case TextAnchor::LowerCenter:
+    case TextAnchor::TopCenter: case TextAnchor::MiddleCenter: case TextAnchor::BottomCenter:
         offsetX = rect.x + (rect.w - measure.x) * 0.5f; break;
     default: break;
     }

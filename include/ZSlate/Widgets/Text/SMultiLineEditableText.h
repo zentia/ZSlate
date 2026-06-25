@@ -227,8 +227,10 @@ private:
     // Scrollbar
     void ApplyThumbDrag(float PointerY, const UIRect& Rect);
 
-private:
+public:
     FTextOptions Options;
+    
+private:
     
     std::string TextContent;
     std::string HintText;
@@ -264,7 +266,12 @@ public:
 
 // ============================================================================
 // STextBlock - Single line text display (UE STextBlock analogue)
+// NOTE: This inline definition only used when the standalone STextBlock.h
+//       is NOT included (to avoid redefinition conflicts).
 // ============================================================================
+
+#ifndef ZSLATE_STEXTBLOCK_DEFINED
+#define ZSLATE_STEXTBLOCK_DEFINED
 
 class STextBlock : public SLeafWidget
 {
@@ -294,9 +301,16 @@ public:
     ISlateTextMeasurer* m_TextMeasurer {nullptr};
 };
 
+#endif // ZSLATE_STEXTBLOCK_DEFINED
+
 // ============================================================================
 // SEditableTextBox - Single line text input (UE SEditableText analogue)
+// NOTE: This inline definition only used when the standalone SEditableTextBox.h
+//       is NOT included (to avoid redefinition conflicts).
 // ============================================================================
+
+#ifndef ZSLATE_SEDITABLETEXTBOX_DEFINED
+#define ZSLATE_SEDITABLETEXTBOX_DEFINED
 
 class SEditableTextBox : public SLeafWidget
 {
@@ -638,5 +652,7 @@ public:
     bool m_Dragging {false};
     ISlateTextMeasurer* m_TextMeasurer {nullptr};
 };
+
+#endif // ZSLATE_SEDITABLETEXTBOX_DEFINED
 
 }  // namespace ZSlate

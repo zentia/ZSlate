@@ -4,6 +4,8 @@
 // UE analogue: Widgets/Text/STextBlock.h
 // TODO: replace with full implementation from ZSlate submodule.
 
+#define ZSLATE_STEXTBLOCK_DEFINED
+
 #include "ZSlate/Widgets/SWidget.h"
 
 #include <string>

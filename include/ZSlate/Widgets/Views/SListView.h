@@ -399,6 +399,7 @@ private:
         std::shared_ptr<SWidget> Widget;
     };
 
+public:
     FListViewOptions Options;
     std::shared_ptr<IListViewDataSource<ItemType>> DataSource;
     FOnGenerateItemWidget<ItemType> OnGenerateItemWidget;

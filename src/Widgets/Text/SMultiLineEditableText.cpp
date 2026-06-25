@@ -651,7 +651,7 @@ void SMultiLineEditableText::DrawText(const FPaintContext& ctx, const FGeometry&
         );
         
         ctx.Renderer->DrawText(TextRect, HintText, Options.FontSize, Options.HintColor, 
-                               TextAnchor::UpperLeft, TextWrapMode::NoWrap, nullptr);
+                               TextAnchor::TopLeft, TextWrapMode::NoWrap, nullptr);
         return;
     }
     
@@ -689,7 +689,7 @@ void SMultiLineEditableText::DrawText(const FPaintContext& ctx, const FGeometry&
         }
         
         ctx.Renderer->DrawText(TextRect, DisplayText, Options.FontSize, Options.TextColor,
-                               TextAnchor::UpperLeft, TextWrapMode::NoWrap, nullptr);
+                               TextAnchor::TopLeft, TextWrapMode::NoWrap, nullptr);
     }
 }
 

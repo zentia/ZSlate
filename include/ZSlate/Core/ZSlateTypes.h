@@ -78,12 +78,12 @@ struct Vector2
     bool IsFinite() const { return std::isfinite(x) && std::isfinite(y); }
 
     // Component-wise min/max
-    static Vector2 Min(const Vector2& A, const Vector2& B) { return Vector2(std::min(A.x, B.x), std::min(A.y, B.y)); }
-    static Vector2 Max(const Vector2& A, const Vector2& B) { return Vector2(std::max(A.x, B.x), std::max(A.y, B.y)); }
-    static Vector2 Clamp(const Vector2& V, const Vector2& Min, const Vector2& Max)
+    static Vector2 Min(const Vector2& A, const Vector2& B) { return Vector2((std::min)(A.x, B.x), (std::min)(A.y, B.y)); }
+    static Vector2 Max(const Vector2& A, const Vector2& B) { return Vector2((std::max)(A.x, B.x), (std::max)(A.y, B.y)); }
+    static Vector2 Clamp(const Vector2& V, const Vector2& MinVec, const Vector2& MaxVec)
     {
-        return Vector2(std::min(std::max(V.x, Min.x), Max.x),
-                       std::min(std::max(V.y, Min.y), Max.y));
+        return Vector2((std::min)((std::max)(V.x, MinVec.x), MaxVec.x),
+                       (std::min)((std::max)(V.y, MinVec.y), MaxVec.y));
     }
 };
 
@@ -185,11 +185,11 @@ struct UIRect
     // Operations
     UIRect Intersection(const UIRect& Other) const
     {
-        float X = std::max(x, Other.x);
-        float Y = std::max(y, Other.y);
-        float W = std::min(Right(), Other.Right()) - X;
-        float H = std::min(Bottom(), Other.Bottom()) - Y;
-        return UIRect(X, Y, std::max(0.0f, W), std::max(0.0f, H));
+        float X = (std::max)(x, Other.x);
+        float Y = (std::max)(y, Other.y);
+        float W = (std::min)(Right(), Other.Right()) - X;
+        float H = (std::min)(Bottom(), Other.Bottom()) - Y;
+        return UIRect(X, Y, (std::max)(0.0f, W), (std::max)(0.0f, H));
     }
 
     // Operators
@@ -203,32 +203,6 @@ struct UIRect
     Vector2 getSize() const { return Size(); }
     bool Contains(const Vector2& point) const { return Contains(point.x, point.y); }
     UIRect intersect(const UIRect& other) const { return Intersection(other); }
-};
-
-// ============================================================================
-// Text Alignment and Wrapping
-// ============================================================================
-
-// Text anchor points (alignment within a rectangle)
-enum class TextAnchor
-{
-    UpperLeft,
-    UpperCenter,
-    UpperRight,
-    MiddleLeft,
-    MiddleCenter,
-    MiddleRight,
-    LowerLeft,
-    LowerCenter,
-    LowerRight
-};
-
-// Text wrapping modes
-enum class TextWrapMode
-{
-    NoWrap,
-    Wrap,
-    WrapAtWordBoundaryOrOverflow
 };
 
 // ============================================================================
