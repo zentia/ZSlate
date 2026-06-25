@@ -1,5 +1,7 @@
 #pragma once
 
+#define ZSLATE_SEDITABLETEXTBOX_DEFINED
+
 #include "ZSlate/Widgets/SWidget.h"
 
 #include <functional>
