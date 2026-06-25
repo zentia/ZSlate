@@ -49,6 +49,11 @@ public:
     uint32_t GetWidth()  const { return m_Width; }
     uint32_t GetHeight() const { return m_Height; }
 
+#ifdef _WIN32
+    ID3D11Device*        GetDevice()  { return m_Device; }
+    ID3D11DeviceContext* GetContext() { return m_Context; }
+#endif
+
 private:
     void CreateWhiteTexture();
     void UploadFontAtlas(ZSlateFontAtlas& atlas);
