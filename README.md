@@ -5,7 +5,8 @@ A lightweight, retained-mode UI framework for C++20 applications.
 ## Features
 
 - **Retained-mode widget tree** — Declarative UI construction with automatic layout
-- **Rich widget library** — 20+ built-in widgets (buttons, text, sliders, scroll views, etc.)
+- **Rich widget library** — 30+ built-in widgets: text, input, layout, views, panels,
+  indicators, advanced controls (tree, combo, spin)
 - **Batch renderer** — `ZSlateBatchedRenderer` records CPU draw commands that any GPU
   backend can consume
 - **D3D11 renderer** — Optional `ZSlateD3D11Renderer` GPU backend (zero-config)
@@ -27,13 +28,17 @@ ZSlate/
 ├── Backend/         # ZEngineSlateRenderer (bridges to ZEngine runtime)
 ├── Widgets/
 │   ├── Text/        # STextBlock, SRichTextBlock, SMultiLineEditableText
-│   ├── Input/       # SButton, SCheckBox, SSlider, SEditableTextBox
-│   ├── Layout/      # SBoxPanel, SScrollBox, SSplitter, SSpacer
-│   ├── Views/       # SListView
+│   ├── Input/       # SButton, SCheckBox, SSlider, SEditableTextBox,
+│   │                 # SComboBox, SSpinBox
+│   ├── Layout/      # SBoxPanel, SScrollBox, SSplitter, SSpacer,
+│   │                 # SGridPanel, SWrapBox, SScrollBar
+│   ├── Views/       # SListView, STreeView
 │   ├── Panels/      # SBorder, SOverlay, SImage
+│   ├── SProgressBar.h, SThrobber.h  # Indicators
 │   ├── SWidget.h    # Base widget class
 │   ├── SLeafWidget.h
-│   └── SCompoundWidget.h
+│   ├── SCompoundWidget.h
+│   └── SPanel.h     # Slot-based panel base
 ├── thirdparty/      # zstb_truetype.h (stb_truetype 1.26)
 └── examples/        # Standalone demo apps
 ```
@@ -149,21 +154,27 @@ target_link_libraries(MyApp PRIVATE ZSlate)
 | `SCheckBox` | Check box toggle |
 | `SSlider` | Slider control |
 | `SEditableTextBox` | Single-line text input |
+| `SComboBox<T>` | Dropdown selector |
+| `SSpinBox` | Numeric spinner (+/- buttons + drag) |
 
 ### Layout Widgets (`Widgets/Layout/`)
 
 | Widget | Description |
 |--------|-------------|
 | `SBoxPanel` | Horizontal/Vertical box layout |
-| `SScrollBox` | Scrollable container |
+| `SScrollBox` | Scrollable container (with SScrollBar sync) |
+| `SScrollBar` | Vertical/horizontal scroll bar |
 | `SSplitter` | Resizable splitter |
 | `SSpacer` | Empty space |
+| `SGridPanel` | Uniform grid (N×M) |
+| `SWrapBox` | Flowing wrap layout |
 
 ### Views Widgets (`Widgets/Views/`)
 
 | Widget | Description |
 |--------|-------------|
-| `SListView<T>` | Virtualized list view (supports 1000+ items efficiently) |
+| `SListView<T>` | Virtualized list view |
+| `STreeView<T>` | Hierarchical tree with expand/collapse |
 
 ### Panels Widgets (`Widgets/Panels/`)
 
@@ -181,6 +192,8 @@ target_link_libraries(MyApp PRIVATE ZSlate)
 | `SLeafWidget` | Leaf widget base (no children) |
 | `SCompoundWidget` | Single-child wrapper |
 | `SMenu` | Menu system |
+| `SProgressBar` | Progress bar (0..1 fill) |
+| `SThrobber` | Animated loading indicator |
 
 ### SRichTextBlock Example
 
