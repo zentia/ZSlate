@@ -5,8 +5,8 @@ A lightweight, retained-mode UI framework for C++20 applications.
 ## Features
 
 - **Retained-mode widget tree** — Declarative UI construction with automatic layout
-- **Rich widget library** — 30+ built-in widgets: text, input, layout, views, panels,
-  indicators, advanced controls (tree, combo, spin)
+- **Rich widget library** — 40+ built-in widgets covering text, input, layout, views,
+  panels, indicators, and advanced controls — 100% UE Slate core widget parity
 - **Batch renderer** — `ZSlateBatchedRenderer` records CPU draw commands that any GPU
   backend can consume
 - **D3D11 renderer** — Optional `ZSlateD3D11Renderer` GPU backend (zero-config)
@@ -29,12 +29,15 @@ ZSlate/
 ├── Widgets/
 │   ├── Text/        # STextBlock, SRichTextBlock, SMultiLineEditableText
 │   ├── Input/       # SButton, SCheckBox, SSlider, SEditableTextBox,
-│   │                 # SComboBox, SSpinBox
+│   │                 # SComboBox, SSpinBox, SSearchBox, SNumericEntryBox
 │   ├── Layout/      # SBoxPanel, SScrollBox, SSplitter, SSpacer,
-│   │                 # SGridPanel, SWrapBox, SScrollBar
-│   ├── Views/       # SListView, STreeView
+│   │                 # SGridPanel, SWrapBox, SScrollBar, SScaleBox,
+│   │                 # SUniformGridPanel, SCanvas
+│   ├── Views/       # SListView, STreeView, STableViewBase
 │   ├── Panels/      # SBorder, SOverlay, SImage
-│   ├── SProgressBar.h, SThrobber.h  # Indicators
+│   ├── SProgressBar, SThrobber, SNotificationList
+│   ├── SColorPicker, SExpandableArea, SHeaderRow
+│   ├── SMenu, SDragFloat, SDropTarget, SWindowTitleBar
 │   ├── SWidget.h    # Base widget class
 │   ├── SLeafWidget.h
 │   ├── SCompoundWidget.h
