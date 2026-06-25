@@ -13,12 +13,12 @@ struct FDragDropOperation;
 
 // Routes mouse + keyboard input into a ZSlate widget tree (UE Slate
 // FSlateApplication path, simplified). Drive it once per frame from the host
-// panel with the live input state. Responsibilities:
-//   * hit-test against each widget's cached geometry
-//   * hover enter/leave along the full hit path
-//   * button-down bubbling deepest->root with mouse capture
-//   * deliver move events to the captured widget (drag), wheel to the hit path
-//   * keyboard focus management + char/key delivery to the focused widget
+// panel with the live input state.
+//
+// CRITICAL: All stored widget references use std::weak_ptr<SWidget> (matching
+// UE's TWeakPtr<SWidget> pattern in FWidgetPath). Before each use, we lock()
+// and check validity. This prevents dangling-pointer crashes when widgets are
+// destroyed between frames — no manual Reset() or root-change detection needed.
 class SlateInputRouter
 {
 public:
@@ -30,7 +30,7 @@ public:
     // Use when only log-row widgets are destroyed (Console filter rebuild).
     void ClearHoverPath() { m_HoverPath.clear(); }
 
-    SWidget* GetKeyboardFocusedWidget() const { return m_Focused; }
+    SWidget* GetKeyboardFocusedWidget() const;
 
     // Set keyboard focus to a specific widget. The widget must have
     // SupportsKeyboardFocus() == true (checked by the setter).
@@ -48,7 +48,7 @@ public:
     void ProcessChar(unsigned int codepoint);
     void ProcessKey(EKey key);
 
-    bool HasKeyboardFocus() const { return m_Focused != nullptr; }
+    bool HasKeyboardFocus() const;
 
     // Modifier key state (static, set by host via SetModifierState, read by widgets)
     static bool IsCtrlDown() { return s_CtrlDown; }
@@ -56,7 +56,6 @@ public:
     static bool IsAltDown() { return s_AltDown; }
 
     // Call this from the host before ProcessKey/ProcessChar to update modifier state.
-    // This avoids changing the ProcessKey signature (which would break all callers).
     static void SetModifierState(bool ctrl, bool shift, bool alt)
     {
         s_CtrlDown = ctrl;
@@ -76,25 +75,36 @@ public:
 
     // Deepest widget currently under the cursor (end of the hover path), or null
     // if nothing is hovered. Hosts use this to apply the widget's GetCursor().
-    SWidget* GetHoveredWidget() const { return m_HoverPath.empty() ? nullptr : m_HoverPath.back(); }
+    SWidget* GetHoveredWidget() const;
 
 private:
+    // Helper: lock a weak_ptr, return raw pointer or nullptr if expired.
+    static SWidget* Lock(const std::weak_ptr<SWidget>& wp);
+
+    // Helper: lock all non-expired weak_ptrs in a path, returning raw pointers.
+    static std::vector<SWidget*> LockPath(const std::vector<std::weak_ptr<SWidget>>& path);
+
     void SetFocus(SWidget* widget);
     void EndDrag();
 
-    std::vector<SWidget*> m_HoverPath;
-    SWidget* m_Captured {nullptr};
-    SWidget* m_Focused {nullptr};
+    // ---- Widget paths use weak_ptr (UE: TWeakPtr<SWidget>) ----
+    // Destroyed widgets lock() to nullptr; loops safely skip expired entries.
+    std::vector<std::weak_ptr<SWidget>> m_HoverPath;
+    std::vector<std::weak_ptr<SWidget>> m_PressPath;
+
+    // Captured / focused widgets also use weak_ptr for safety.
+    std::weak_ptr<SWidget> m_Captured;
+    std::weak_ptr<SWidget> m_Focused;
+    std::weak_ptr<SWidget> m_RightCaptured;
+    std::weak_ptr<SWidget> m_DragOverTarget;
+
     bool m_PrevLeftDown {false};
     bool m_PrevRightDown {false};
-    SWidget* m_RightCaptured {nullptr};
 
     // Drag-drop gesture state.
-    std::vector<SWidget*> m_PressPath;  // hit path captured at left-button-down
     Vector2 m_PressOrigin {0.0f, 0.0f};
     bool m_LeftPressed {false};
     std::shared_ptr<FDragDropOperation> m_DragOp;  // non-null while dragging
-    SWidget* m_DragOverTarget {nullptr};
 
     // Static modifier key state (per-thread, set by ProcessKey)
     static thread_local bool s_CtrlDown;

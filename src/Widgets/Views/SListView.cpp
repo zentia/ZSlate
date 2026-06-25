@@ -1,5 +1,10 @@
 #include "ZSlate/Widgets/Views/SListView.h"
 
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <Windows.h>
+
 #include <algorithm>
 #include <string>
 
@@ -120,27 +125,30 @@ FReply SListView<ItemType>::OnMouseWheel(const Vector2& pos, float delta)
 template<typename ItemType>
 FReply SListView<ItemType>::OnMouseButtonDown(const Vector2& pos, int button)
 {
-    if (button == 0) // Left button
+    if (button == 0 || button == 1) // Left or Right button
     {
         // Check if click is on scrollbar
-        float TotalHeight = CalculateTotalHeight();
-        float ViewHeight = m_CachedGeometry.LocalSize.y;
-        
-        if (TotalHeight > ViewHeight)
+        if (button == 0)
         {
-            float ScrollbarX = m_CachedGeometry.LocalSize.x - Options.ScrollBarWidth;
-            float ScrollbarY = Options.Padding.Top;
-            float ScrollbarH = m_CachedGeometry.LocalSize.y - Options.Padding.Top - Options.Padding.Bottom;
+            float TotalHeight = CalculateTotalHeight();
+            float ViewHeight = m_CachedGeometry.LocalSize.y;
             
-            if (pos.x >= ScrollbarX && pos.y >= ScrollbarY && pos.x <= ScrollbarX + Options.ScrollBarWidth && pos.y <= ScrollbarY + ScrollbarH)
+            if (TotalHeight > ViewHeight)
             {
-                m_DraggingThumb = true;
-                m_DragGrab = pos.y - (m_ScrollOffset / TotalHeight) * ScrollbarH;
-                return FReply::Handled();
+                float ScrollbarX = m_CachedGeometry.LocalSize.x - Options.ScrollBarWidth;
+                float ScrollbarY = Options.Padding.Top;
+                float ScrollbarH = m_CachedGeometry.LocalSize.y - Options.Padding.Top - Options.Padding.Bottom;
+                
+                if (pos.x >= ScrollbarX && pos.y >= ScrollbarY && pos.x <= ScrollbarX + Options.ScrollBarWidth && pos.y <= ScrollbarY + ScrollbarH)
+                {
+                    m_DraggingThumb = true;
+                    m_DragGrab = pos.y - (m_ScrollOffset / TotalHeight) * ScrollbarH;
+                    return FReply::Handled();
+                }
             }
         }
         
-        // Click on item
+        // Click on item — select the clicked item
         int32_t Index = HitTestIndex(pos - m_CachedGeometry.AbsolutePosition);
         if (Index >= 0)
         {
@@ -191,6 +199,18 @@ FReply SListView<ItemType>::OnMouseButtonUp(const Vector2& pos, int button)
     if (button == 0)
     {
         m_DraggingThumb = false;
+    }
+    else if (button == 1) // Right button
+    {
+        int32_t Index = HitTestIndex(pos - m_CachedGeometry.AbsolutePosition);
+        if (Index >= 0 && OnItemRightClicked)
+        {
+            SetSelection(Index);
+            m_HoveredIndex = Index;
+            // Use Win32 GetCursorPos for accurate screen coordinates
+            POINT pt; GetCursorPos(&pt);
+            OnItemRightClicked(Index, Vector2((float)pt.x, (float)pt.y));
+        }
     }
     return FReply::Handled();
 }

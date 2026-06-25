@@ -62,6 +62,10 @@ using FOnGenerateItemWidget = std::function<std::shared_ptr<SWidget>(const ItemT
 template<typename ItemType>
 using FOnSelectionChanged = std::function<void(const std::vector<int32_t>& SelectedIndices)>;
 
+// Right-click callback: receives item index and screen-space cursor position for popup positioning
+template<typename ItemType>
+using FOnItemRightClicked = std::function<void(int32_t Index, const Vector2& ScreenPos)>;
+
 // ============================================================================
 // SListView - Virtualized list view widget (UE SListView analogue)
 // ============================================================================
@@ -107,6 +111,12 @@ public:
     void SetOnSelectionChanged(FOnSelectionChanged<ItemType> InCallback)
     {
         OnSelectionChanged = std::move(InCallback);
+    }
+
+    // Set right-click callback (for context menu)
+    void SetOnItemRightClicked(FOnItemRightClicked<ItemType> InCallback)
+    {
+        OnItemRightClicked = std::move(InCallback);
     }
 
     // Selection management
@@ -404,6 +414,7 @@ public:
     std::shared_ptr<IListViewDataSource<ItemType>> DataSource;
     FOnGenerateItemWidget<ItemType> OnGenerateItemWidget;
     FOnSelectionChanged<ItemType> OnSelectionChanged;
+    FOnItemRightClicked<ItemType> OnItemRightClicked;
     
     mutable float m_ScrollOffset {0.0f};
     mutable std::vector<FVisibleItem> m_VisibleItems;
