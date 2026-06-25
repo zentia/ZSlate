@@ -213,8 +213,7 @@ int main()
         Sleep(1);
     }
 out:
-    backend->Shutdown();
-    delete backend;
+    delete backend;  // destructor calls Shutdown() — do NOT call Shutdown() twice
     return 0;
 }
 

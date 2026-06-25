@@ -2,6 +2,29 @@ MSBuild version 17.14.40+3e7442088 for .NET Framework
 
 cl : command line  warning D9035: option 'experimental:preprocessor' has been deprecated and will be removed in a future release [E:\Engine\ZEngine\engine\Libraries\ZSlate\build\ZSlate.vcxproj]
 cl : command line  warning D9036: use 'Zc:preprocessor' instead of 'experimental:preprocessor' [E:\Engine\ZEngine\engine\Libraries\ZSlate\build\ZSlate.vcxproj]
-  ZSlateBatchedRenderer.cpp
+  ZSlateD3D11Renderer.cpp
   ZSlate.vcxproj -> E:\Engine\ZEngine\engine\Libraries\ZSlate\build\Debug\ZSlate.lib
+  standalone_app_example.cpp
+E:\Engine\ZEngine\engine\Libraries\ZSlate\examples\standalone_app_example.cpp(1,1): warning C4819: The file contains a character that cannot be represented in the current code page (936). Save the file in Unicode format to prevent data loss [E:\Engine\ZEngine\engine\Libraries\ZSlate\build\examples\ZSlateStandaloneApp.vcxproj]
+E:\Engine\ZEngine\engine\Libraries\ZSlate\include\ZSlate\Renderer\ZSlateBatchedRenderer.h(1,1): warning C4819: The file contains a character that cannot be represented in the current code page (936). Save the file in Unicode format to prevent data loss [E:\Engine\ZEngine\engine\Libraries\ZSlate\build\examples\ZSlateStandaloneApp.vcxproj]
+  (compiling source file '../../examples/standalone_app_example.cpp')
+  
+E:\Engine\ZEngine\engine\Libraries\ZSlate\include\ZSlate\Renderer\ZSlateFontAtlas.h(1,1): warning C4819: The file contains a character that cannot be represented in the current code page (936). Save the file in Unicode format to prevent data loss [E:\Engine\ZEngine\engine\Libraries\ZSlate\build\examples\ZSlateStandaloneApp.vcxproj]
+  (compiling source file '../../examples/standalone_app_example.cpp')
+  
+E:\Engine\ZEngine\engine\Libraries\ZSlate\include\ZSlate\Renderer\ZSlateTextGenerator.h(1,1): warning C4819: The file contains a character that cannot be represented in the current code page (936). Save the file in Unicode format to prevent data loss [E:\Engine\ZEngine\engine\Libraries\ZSlate\build\examples\ZSlateStandaloneApp.vcxproj]
+  (compiling source file '../../examples/standalone_app_example.cpp')
+  
+E:\Engine\ZEngine\engine\Libraries\ZSlate\include\ZSlate\Platform\D3D11\ZSlateD3D11Renderer.h(1,1): warning C4819: The file contains a character that cannot be represented in the current code page (936). Save the file in Unicode format to prevent data loss [E:\Engine\ZEngine\engine\Libraries\ZSlate\build\examples\ZSlateStandaloneApp.vcxproj]
+  (compiling source file '../../examples/standalone_app_example.cpp')
+  
+E:\Engine\ZEngine\engine\Libraries\ZSlate\include\ZSlate\Widgets\Panels\SBorder.h(1,1): warning C4819: The file contains a character that cannot be represented in the current code page (936). Save the file in Unicode format to prevent data loss [E:\Engine\ZEngine\engine\Libraries\ZSlate\build\examples\ZSlateStandaloneApp.vcxproj]
+  (compiling source file '../../examples/standalone_app_example.cpp')
+  
+E:\Engine\ZEngine\engine\Libraries\ZSlate\include\ZSlate\Widgets\SCompoundWidget.h(1,1): warning C4819: The file contains a character that cannot be represented in the current code page (936). Save the file in Unicode format to prevent data loss [E:\Engine\ZEngine\engine\Libraries\ZSlate\build\examples\ZSlateStandaloneApp.vcxproj]
+  (compiling source file '../../examples/standalone_app_example.cpp')
+  
+E:\Engine\ZEngine\engine\Libraries\ZSlate\include\ZSlate\Widgets\Input\SCheckBox.h(1,1): warning C4819: The file contains a character that cannot be represented in the current code page (936). Save the file in Unicode format to prevent data loss [E:\Engine\ZEngine\engine\Libraries\ZSlate\build\examples\ZSlateStandaloneApp.vcxproj]
+  (compiling source file '../../examples/standalone_app_example.cpp')
+  
   ZSlateStandaloneApp.vcxproj -> E:\Engine\ZEngine\engine\Libraries\ZSlate\build\bin\Debug\ZSlateStandaloneApp.exe

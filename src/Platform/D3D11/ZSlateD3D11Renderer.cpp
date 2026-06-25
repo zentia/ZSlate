@@ -300,6 +300,11 @@ void ZSlateD3D11Renderer::Shutdown()
     if (m_Device) m_Device->Release();
 
     m_Device = nullptr; m_Context = nullptr; m_SwapChain = nullptr; m_RTV = nullptr;
+    m_VS = nullptr; m_PS = nullptr; m_InputLayout = nullptr;
+    m_BlendState = nullptr; m_RasterState = nullptr; m_PerFrameCB = nullptr;
+    m_Sampler = nullptr; m_WhiteSRV = nullptr;
+    m_FontSRV = nullptr; m_FontTex = nullptr;
+    m_VB = nullptr; m_IB = nullptr;
     #endif
 }
 
