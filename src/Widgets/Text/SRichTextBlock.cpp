@@ -576,7 +576,7 @@ void SRichTextBlock::PaintRun(const FPaintContext& ctx, const Vector2& Position,
     case ERichTextTagType::Hyperlink:
         {
             // Draw hyperlink text with underline
-            ctx.Renderer->DrawText(UIRect(Position.x, Position.y, 0, Run.FontSize),
+            ctx.Renderer->DrawTextLabel(UIRect(Position.x, Position.y, 0, Run.FontSize),
                                     Run.HyperlinkText, Run.FontSize, Run.Color,
                                     TextAnchor::MiddleLeft, TextWrapMode::NoWrap, nullptr);
 
@@ -594,7 +594,7 @@ void SRichTextBlock::PaintRun(const FPaintContext& ctx, const Vector2& Position,
     default:
         if (!Run.Text.empty())
         {
-            ctx.Renderer->DrawText(UIRect(Position.x, Position.y, 0, Run.FontSize),
+            ctx.Renderer->DrawTextLabel(UIRect(Position.x, Position.y, 0, Run.FontSize),
                                     Run.Text, Run.FontSize, Run.Color,
                                     TextAnchor::MiddleLeft, TextWrapMode::NoWrap, nullptr);
 

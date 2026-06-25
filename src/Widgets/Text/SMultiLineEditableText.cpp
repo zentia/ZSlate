@@ -650,7 +650,7 @@ void SMultiLineEditableText::DrawText(const FPaintContext& ctx, const FGeometry&
             Rect.h - Options.Padding.GetTotalVertical()
         );
         
-        ctx.Renderer->DrawText(TextRect, HintText, Options.FontSize, Options.HintColor, 
+        ctx.Renderer->DrawTextLabel(TextRect, HintText, Options.FontSize, Options.HintColor, 
                                TextAnchor::TopLeft, TextWrapMode::NoWrap, nullptr);
         return;
     }
@@ -688,7 +688,7 @@ void SMultiLineEditableText::DrawText(const FPaintContext& ctx, const FGeometry&
             DisplayText = std::string(LineText.length(), '*');
         }
         
-        ctx.Renderer->DrawText(TextRect, DisplayText, Options.FontSize, Options.TextColor,
+        ctx.Renderer->DrawTextLabel(TextRect, DisplayText, Options.FontSize, Options.TextColor,
                                TextAnchor::TopLeft, TextWrapMode::NoWrap, nullptr);
     }
 }

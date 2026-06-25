@@ -61,7 +61,7 @@ public:
         if (HasSubMenu)
         {
             // ZSlate::UIRect uses .w/.h (not .width/.height)
-            ctx.Renderer->DrawText(UIRect(rect.x + rect.w - gutter, rect.y, gutter, rect.h),
+            ctx.Renderer->DrawTextLabel(UIRect(rect.x + rect.w - gutter, rect.y, gutter, rect.h),
                                    ">", FontSize, mark, TextAnchor::MiddleCenter, TextWrapMode::NoWrap, nullptr);
         }
         else if (ShowCheck)

@@ -77,9 +77,9 @@ void ZEngineSlateRenderer::DrawBorder(const ZSlate::UIRect& rect, const FMargin&
     m_Renderer->DrawRect(ui_rect, tint, 1.0f);
 }
 
-void ZEngineSlateRenderer::DrawText(const ZSlate::UIRect& rect, const std::string& text, float font_size,
-                                 const UIColor& color, TextAnchor alignment, TextWrapMode wrap,
-                                 void* font_handle)
+void ZEngineSlateRenderer::DrawTextLabel(const ZSlate::UIRect& rect, const std::string& text, float font_size,
+                                      const UIColor& color, TextAnchor alignment, TextWrapMode wrap,
+                                      void* font_handle)
 {
     if (!m_Renderer)
         return;
@@ -89,7 +89,7 @@ void ZEngineSlateRenderer::DrawText(const ZSlate::UIRect& rect, const std::strin
                          static_cast<Font*>(font_handle));
 }
 
-void ZEngineSlateRenderer::DrawText(const std::string& text, const Vector2& pos, float font_size, const UIColor& color)
+void ZEngineSlateRenderer::DrawTextLabel(const std::string& text, const Vector2& pos, float font_size, const UIColor& color)
 {
     if (!m_Renderer)
         return;

@@ -43,7 +43,7 @@ public:
     {
         if (ctx.Renderer && !Text.empty())
         {
-            ctx.Renderer->DrawText(geom.ToRect(), Text, FontSize, Color, Alignment, TextWrapMode::NoWrap);
+            ctx.Renderer->DrawTextLabel(geom.ToRect(), Text, FontSize, Color, Alignment, TextWrapMode::NoWrap);
         }
     }
 };

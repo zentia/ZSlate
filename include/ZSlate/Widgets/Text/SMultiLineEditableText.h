@@ -295,7 +295,7 @@ public:
     {
         if (ctx.Renderer == nullptr || Text.empty())
             return;
-        ctx.Renderer->DrawText(geom.ToRect(), Text, FontSize, Color, Alignment, TextWrapMode::NoWrap, nullptr);
+        ctx.Renderer->DrawTextLabel(geom.ToRect(), Text, FontSize, Color, Alignment, TextWrapMode::NoWrap, nullptr);
     }
 
     ISlateTextMeasurer* m_TextMeasurer {nullptr};
@@ -386,12 +386,12 @@ public:
         // Draw text
         if (Text.empty() && !m_Focused && !HintText.empty())
         {
-            ctx.Renderer->DrawText(text_rect, HintText, FontSize, HintColor, TextAnchor::MiddleLeft,
+            ctx.Renderer->DrawTextLabel(text_rect, HintText, FontSize, HintColor, TextAnchor::MiddleLeft,
                                    TextWrapMode::NoWrap, nullptr);
         }
         else if (!Text.empty())
         {
-            ctx.Renderer->DrawText(text_rect, Text, FontSize, TextColor, TextAnchor::MiddleLeft,
+            ctx.Renderer->DrawTextLabel(text_rect, Text, FontSize, TextColor, TextAnchor::MiddleLeft,
                                    TextWrapMode::NoWrap, nullptr);
         }
 

@@ -257,9 +257,9 @@ void ZSlateBatchedRenderer::DrawBorder(const UIRect& rect, const FMargin& margin
     DrawRect(rect, tint, margin.Left);
 }
 
-void ZSlateBatchedRenderer::DrawText(const UIRect& rect, const std::string& text, float fontSize,
-                                  const UIColor& color, TextAnchor alignment,
-                                  TextWrapMode wrap, void* fontHandle)
+void ZSlateBatchedRenderer::DrawTextLabel(const UIRect& rect, const std::string& text, float fontSize,
+                                         const UIColor& color, TextAnchor alignment,
+                                         TextWrapMode wrap, void* fontHandle)
 {
     (void)fontHandle;
 
@@ -316,10 +316,10 @@ void ZSlateBatchedRenderer::DrawText(const UIRect& rect, const std::string& text
     }
 }
 
-void ZSlateBatchedRenderer::DrawText(const std::string& text, const Vector2& pos, float fontSize, const UIColor& color)
+void ZSlateBatchedRenderer::DrawTextLabel(const std::string& text, const Vector2& pos, float fontSize, const UIColor& color)
 {
-    DrawText(UIRect{pos.x, pos.y, 300, fontSize + 4}, text, fontSize, color,
-             TextAnchor::MiddleLeft, TextWrapMode::NoWrap, nullptr);
+    DrawTextLabel(UIRect{pos.x, pos.y, 300, fontSize + 4}, text, fontSize, color,
+                  TextAnchor::MiddleLeft, TextWrapMode::NoWrap, nullptr);
 }
 
 Vector2 ZSlateBatchedRenderer::MeasureText(const std::string& text, float fontSize) const

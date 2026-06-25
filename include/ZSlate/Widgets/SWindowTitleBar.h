@@ -73,7 +73,7 @@ public:
                 break;
             }
             case EWindowGlyph::Close:
-                ctx.Renderer->DrawText(r, "x", std::max(10.0f, r.h * 0.5f), Color,
+                ctx.Renderer->DrawTextLabel(r, "x", std::max(10.0f, r.h * 0.5f), Color,
                                        TextAnchor::MiddleCenter, TextWrapMode::NoWrap, nullptr);
                 break;
         }
@@ -167,7 +167,7 @@ public:
         {
             const float pad = BarHeight * 0.30f;
             const float text_w = std::max(1.0f, r.w - 2.0f * BarHeight - pad);
-            ctx.Renderer->DrawText(UIRect(r.x + pad, r.y, text_w, r.h), Title, FontSize, TitleColor,
+            ctx.Renderer->DrawTextLabel(UIRect(r.x + pad, r.y, text_w, r.h), Title, FontSize, TitleColor,
                                    TextAnchor::MiddleLeft, TextWrapMode::NoWrap, nullptr);
         }
     }

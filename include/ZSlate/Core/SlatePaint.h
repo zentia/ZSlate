@@ -30,12 +30,13 @@ struct ISlateRenderer
     virtual void DrawBorder(const UIRect& rect, const FMargin& margin, void* texture_handle, const UIColor& tint) = 0;
 
     // Text
+    // Named DrawTextLabel to avoid collision with windows.h DrawText macro.
     // Overload 1: draw into a rect with alignment (used by most widgets)
-    virtual void DrawText(const UIRect& rect, const std::string& text, float font_size, const UIColor& color,
-                          TextAnchor alignment = TextAnchor::MiddleLeft, TextWrapMode wrap = TextWrapMode::NoWrap,
-                          void* font_handle = nullptr) = 0;
+    virtual void DrawTextLabel(const UIRect& rect, const std::string& text, float font_size, const UIColor& color,
+                               TextAnchor alignment = TextAnchor::MiddleLeft, TextWrapMode wrap = TextWrapMode::NoWrap,
+                               void* font_handle = nullptr) = 0;
     // Overload 2: draw at position (legacy API)
-    virtual void DrawText(const std::string& text, const Vector2& pos, float font_size, const UIColor& color) = 0;
+    virtual void DrawTextLabel(const std::string& text, const Vector2& pos, float font_size, const UIColor& color) = 0;
     virtual Vector2 MeasureText(const std::string& text, float font_size) const = 0;
 
     // Clipping

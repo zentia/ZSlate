@@ -129,7 +129,7 @@ public:
         ctx.Renderer->DrawQuad(geom.ToRect(), ZSlate::Colors::Blue);
         
         // Draw text
-        ctx.Renderer->DrawText(Label, geom.AbsolutePosition, 14.0f, ZSlate::Colors::White);
+        ctx.Renderer->DrawTextLabel(Label, geom.AbsolutePosition, 14.0f, ZSlate::Colors::White);
     }
 
     ZSlate::ECursorType GetCursor() const override { return ZSlate::ECursorType::Hand; }

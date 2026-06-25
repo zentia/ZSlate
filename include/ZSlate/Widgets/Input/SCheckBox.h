@@ -54,7 +54,7 @@ public:
         {
             float pad = 3.0f;
             UIRect mark(box.x + pad, box.y + pad, box.w - pad * 2, box.h - pad * 2);
-            ctx.Renderer->DrawText(mark, "\xE2\x9C\x93", sz - 2.0f,
+            ctx.Renderer->DrawTextLabel(mark, "\xE2\x9C\x93", sz - 2.0f,
                                    UIColor(1.0f, 1.0f, 1.0f, 1.0f),
                                    TextAnchor::MiddleCenter, TextWrapMode::NoWrap);
         }
@@ -63,7 +63,7 @@ public:
         if (!Label.empty())
         {
             UIRect lr(rect.x + sz + 10.0f, rect.y, rect.w - sz - 14.0f, rect.h);
-            ctx.Renderer->DrawText(lr, Label, 13.0f, UIColor(0.88f, 0.89f, 0.92f, 1.0f),
+            ctx.Renderer->DrawTextLabel(lr, Label, 13.0f, UIColor(0.88f, 0.89f, 0.92f, 1.0f),
                                    TextAnchor::MiddleLeft, TextWrapMode::NoWrap);
         }
     }

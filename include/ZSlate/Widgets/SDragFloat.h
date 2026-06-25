@@ -45,7 +45,7 @@ public:
 
         char buf[48];
         std::snprintf(buf, sizeof(buf), Format.c_str(), Value);
-        ctx.Renderer->DrawText(rect, buf, FontSize, TextColor, TextAnchor::MiddleCenter, TextWrapMode::NoWrap);
+        ctx.Renderer->DrawTextLabel(rect, buf, FontSize, TextColor, TextAnchor::MiddleCenter, TextWrapMode::NoWrap);
     }
 
     void OnMouseEnter() override { m_Hovered = true; }

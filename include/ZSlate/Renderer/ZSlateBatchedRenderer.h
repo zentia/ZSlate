@@ -97,10 +97,10 @@ public:
     void DrawBox(const UIRect& rect, const FMargin& margin, void* texture_handle, const UIColor& tint) override;
     void DrawBorder(const UIRect& rect, const FMargin& margin, void* texture_handle, const UIColor& tint) override;
 
-    void DrawText(const UIRect& rect, const std::string& text, float font_size, const UIColor& color,
-                  TextAnchor alignment = TextAnchor::MiddleLeft, TextWrapMode wrap = TextWrapMode::NoWrap,
-                  void* font_handle = nullptr) override;
-    void DrawText(const std::string& text, const Vector2& pos, float font_size, const UIColor& color) override;
+    void DrawTextLabel(const UIRect& rect, const std::string& text, float font_size, const UIColor& color,
+                       TextAnchor alignment = TextAnchor::MiddleLeft, TextWrapMode wrap = TextWrapMode::NoWrap,
+                       void* font_handle = nullptr) override;
+    void DrawTextLabel(const std::string& text, const Vector2& pos, float font_size, const UIColor& color) override;
     Vector2 MeasureText(const std::string& text, float font_size) const override;
 
     void PushClipRect(const UIRect& rect) override;

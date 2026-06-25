@@ -50,7 +50,7 @@ public:
             const UIColor displayColor = Text.empty() ? UIColor(0.5f, 0.5f, 0.55f, 1.0f) : UIColor(0.9f, 0.9f, 0.9f, 1.0f);
             if (!display.empty())
             {
-                ctx.Renderer->DrawText(UIRect(rect.x + 6.0f, rect.y, rect.w - 12.0f, rect.h),
+                ctx.Renderer->DrawTextLabel(UIRect(rect.x + 6.0f, rect.y, rect.w - 12.0f, rect.h),
                                        display, FontSize, displayColor,
                                        TextAnchor::MiddleLeft, TextWrapMode::NoWrap);
             }
