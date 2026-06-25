@@ -3,11 +3,10 @@
 #include "ZSlate/Core/ZSlateTypes.h"
 #include "ZSlate/Widgets/SWidget.h"
 
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <vector>
-#include <algorithm>
-#include <cstdint>
 
 namespace ZSlate
 {
@@ -55,13 +54,13 @@ private:
     std::vector<ItemType> Items;
 };
 
-    // Item widget generator callback
-    template<typename ItemType>
-    using FOnGenerateItemWidget = std::function<std::shared_ptr<SWidget>(const ItemType& Item, int32_t Index, SListView<ItemType>* ListView)>;
+// Item widget generator callback
+template<typename ItemType>
+using FOnGenerateItemWidget = std::function<std::shared_ptr<SWidget>(const ItemType& Item, int32_t Index, const std::shared_ptr<SListView<ItemType>>& ListView)>;
 
-    // Selection changed callback
-    template<typename ItemType>
-    using FOnSelectionChanged = std::function<void(const std::vector<int32_t>& SelectedIndices)>;
+// Selection changed callback
+template<typename ItemType>
+using FOnSelectionChanged = std::function<void(const std::vector<int32_t>& SelectedIndices)>;
 
 // ============================================================================
 // SListView - Virtualized list view widget (UE SListView analogue)
@@ -76,6 +75,7 @@ public:
     {
         float ItemHeight {24.0f};                    // Fixed height for all items (0 = variable)
         float ScrollBarWidth {6.0f};                  // Scrollbar width
+        FMargin Padding {4.0f};                       // Padding around content
         UIColor ScrollBarColor {0.40f, 0.40f, 0.46f, 0.85f};
         UIColor SelectedBackgroundColor {0.2f, 0.45f, 0.75f, 0.8f};
         UIColor HoveredBackgroundColor {0.3f, 0.3f, 0.3f, 0.5f};
@@ -216,15 +216,9 @@ public:
     void OnMouseMove(const Vector2& pos) override;
     FReply OnMouseButtonUp(const Vector2& pos, int button) override;
     void OnMouseCaptureLost() override;
-    
-    // Scrollbar drag handling
-    void ApplyThumbDrag(float PointerY, const UIRect& Rect, float TotalHeight);
 
     // Clipping
     bool ClipsContent() const override { return true; }
-    
-    // Configuration options (public for easy access)
-    FListViewOptions Options;
 
 private:
     // Calculate the Y position (from top) of item at index
@@ -272,7 +266,7 @@ private:
             return nullptr;
         
         const ItemType& Item = DataSource->GetItem(Index);
-        return OnGenerateItemWidget(Item, Index, this);
+        return OnGenerateItemWidget(Item, Index, std::static_pointer_cast<SListView<ItemType>>(shared_from_this()));
     }
 
     // Update visible items based on scroll offset
@@ -405,6 +399,7 @@ private:
         std::shared_ptr<SWidget> Widget;
     };
 
+    FListViewOptions Options;
     std::shared_ptr<IListViewDataSource<ItemType>> DataSource;
     FOnGenerateItemWidget<ItemType> OnGenerateItemWidget;
     FOnSelectionChanged<ItemType> OnSelectionChanged;
@@ -431,7 +426,7 @@ template<typename ItemType>
 std::shared_ptr<SListView<ItemType>> CreateListView(
     std::vector<ItemType> Items,
     FOnGenerateItemWidget<ItemType> Generator,
-    const typename SListView<ItemType>::FListViewOptions& Options = SListView<ItemType>::FListViewOptions())
+    const typename SListView<ItemType>::FListViewOptions& Options = typename SListView<ItemType>::FListViewOptions{})
 {
     auto ListView = std::make_shared<SListView<ItemType>>(Options);
     ListView->SetDataSource(std::make_shared<TSimpleListViewDataSource<ItemType>>(std::move(Items)));

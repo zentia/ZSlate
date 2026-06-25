@@ -66,8 +66,8 @@ void SlateApplication::PaintInto(ISlateRenderer* renderer, const UIRect& region)
     ctx.Renderer = renderer;
     ctx.LayerId = 0;
 
-    renderer->pushClipRect(region);
+    renderer->PushClipRect(region);
     m_Root->Paint(ctx, root_geometry);
-    renderer->popClipRect();
+    renderer->PopClipRect();
 }
 }  // namespace ZSlate

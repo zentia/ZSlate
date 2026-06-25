@@ -4,10 +4,10 @@
 // This file defines the core math and type primitives ZSlate depends on,
 // decoupled from any specific engine's math library.
 
+#include <algorithm>
 #include <cmath>
 #include <cstring>
 #include <cstdint>
-#include <algorithm>
 
 namespace ZSlate
 {
@@ -78,12 +78,12 @@ struct Vector2
     bool IsFinite() const { return std::isfinite(x) && std::isfinite(y); }
 
     // Component-wise min/max
-    static Vector2 VectorMin(const Vector2& A, const Vector2& B) { return Vector2(std::min(A.x, B.x), std::min(A.y, B.y)); }
-    static Vector2 VectorMax(const Vector2& A, const Vector2& B) { return Vector2(std::max(A.x, B.x), std::max(A.y, B.y)); }
-    static Vector2 Clamp(const Vector2& V, const Vector2& MinVal, const Vector2& MaxVal)
+    static Vector2 Min(const Vector2& A, const Vector2& B) { return Vector2(std::min(A.x, B.x), std::min(A.y, B.y)); }
+    static Vector2 Max(const Vector2& A, const Vector2& B) { return Vector2(std::max(A.x, B.x), std::max(A.y, B.y)); }
+    static Vector2 Clamp(const Vector2& V, const Vector2& Min, const Vector2& Max)
     {
-        return Vector2(std::min(std::max(V.x, MinVal.x), MaxVal.x),
-                       std::min(std::max(V.y, MinVal.y), MaxVal.y));
+        return Vector2(std::min(std::max(V.x, Min.x), Max.x),
+                       std::min(std::max(V.y, Min.y), Max.y));
     }
 };
 
@@ -137,7 +137,7 @@ struct Vector4
 
 inline Vector4 operator*(float S, const Vector4& V) { return V * S; }
 
-// Color type alias
+// Type alias for colors
 using UIColor = Vector4;
 
 // ============================================================================
@@ -195,6 +195,40 @@ struct UIRect
     // Operators
     bool operator==(const UIRect& Other) const { return x == Other.x && y == Other.y && w == Other.w && h == Other.h; }
     bool operator!=(const UIRect& Other) const { return !(*this == Other); }
+
+    // ---- Backward-compat aliases (migrating from legacy ::UIRect) ----
+    Vector2 getMin() const { return Position(); }
+    Vector2 getMax() const { return Vector2(Right(), Bottom()); }
+    Vector2 getCenter() const { return Vector2(x + w * 0.5f, y + h * 0.5f); }
+    Vector2 getSize() const { return Size(); }
+    bool Contains(const Vector2& point) const { return Contains(point.x, point.y); }
+    UIRect intersect(const UIRect& other) const { return Intersection(other); }
+};
+
+// ============================================================================
+// Text Alignment and Wrapping
+// ============================================================================
+
+// Text anchor points (alignment within a rectangle)
+enum class TextAnchor
+{
+    UpperLeft,
+    UpperCenter,
+    UpperRight,
+    MiddleLeft,
+    MiddleCenter,
+    MiddleRight,
+    LowerLeft,
+    LowerCenter,
+    LowerRight
+};
+
+// Text wrapping modes
+enum class TextWrapMode
+{
+    NoWrap,
+    Wrap,
+    WrapAtWordBoundaryOrOverflow
 };
 
 // ============================================================================

@@ -1,469 +1,225 @@
 // ============================================================================
-// ZSlate Standalone Application Example
+// ZSlate Standalone Example — Win32 + D3D11 + Font Atlas + Input Routing
 // ============================================================================
-// This example shows how to build a complete UI application using ZSlate
-// with a custom rendering backend.
-//
-// For a real application, you would replace MockRenderer with your actual
-// rendering backend (OpenGL, Vulkan, DirectX, etc.).
-// ============================================================================
-
 #include "ZSlate/Application/SlateApplication.h"
 #include "ZSlate/Application/SlateInput.h"
 #include "ZSlate/Core/SlatePaint.h"
 #include "ZSlate/Core/SlateGeometry.h"
-#include "ZSlate/Core/SlateClipboard.h"
+#include "ZSlate/Renderer/ZSlateBatchedRenderer.h"
+#include "ZSlate/Renderer/ZSlateFontAtlas.h"
+#include "ZSlate/Platform/D3D11/ZSlateD3D11Renderer.h"
 #include "ZSlate/Widgets/Panels/SBorder.h"
 #include "ZSlate/Widgets/Layout/SBoxPanel.h"
 #include "ZSlate/Widgets/Input/SButton.h"
 #include "ZSlate/Widgets/Input/SCheckBox.h"
 #include "ZSlate/Widgets/Input/SEditableTextBox.h"
-#include "ZSlate/Widgets/Panels/SOverlay.h"
-#include "ZSlate/Widgets/Layout/SScrollBox.h"
 #include "ZSlate/Widgets/Input/SSlider.h"
 #include "ZSlate/Widgets/Layout/SSpacer.h"
-#include "ZSlate/Widgets/Layout/SSplitter.h"
 #include "ZSlate/Widgets/Text/STextBlock.h"
 #include "ZSlate/Widgets/SWidget.h"
 
 #include <cstdio>
 #include <memory>
 #include <string>
+#include <chrono>
+#include <vector>
+
+#ifdef _WIN32
+  #ifndef WIN32_LEAN_AND_MEAN
+  #define WIN32_LEAN_AND_MEAN
+  #endif
+  #include <windows.h>
+  #undef DrawText  // windows.h #defines DrawText → DrawTextA/W
+#endif
 
 // ============================================================================
-// Mock Renderer Implementation
-// Replace this with your actual rendering backend
-// ============================================================================
-
-struct MockRenderer : public ZSlate::ISlateRenderer
-{
-    int m_DrawCallCount {0};
-    
-    void drawQuad(const ZSlate::UIRect& rect, const ZSlate::UIColor& color) override
-    {
-        m_DrawCallCount++;
-        // In a real implementation, you would:
-        // 1. Create a quad vertex buffer
-        // 2. Set the color
-        // 3. Submit to your render queue
-        printf("[drawQuad] rect=(%.1f, %.1f, %.1f, %.1f) color=(%.2f, %.2f, %.2f, %.2f)\n",
-            rect.x, rect.y, rect.w, rect.h,
-            color.x, color.y, color.z, color.w);
-    }
-
-    void drawRect(const ZSlate::UIRect& rect, const ZSlate::UIColor& color, float thickness = 1.0f) override
-    {
-        m_DrawCallCount++;
-        printf("[drawRect] rect=(%.1f, %.1f, %.1f, %.1f) thickness=%.1f\n",
-            rect.x, rect.y, rect.w, rect.h, thickness);
-    }
-
-    void drawConvexPoly(const ZSlate::Vector2* points, int count, const ZSlate::UIColor& color) override
-    {
-        m_DrawCallCount++;
-        printf("[drawConvexPoly] %d points\n", count);
-    }
-
-    void drawRoundedRect(const ZSlate::UIRect& rect, float radius, const ZSlate::UIColor& color) override
-    {
-        m_DrawCallCount++;
-        printf("[drawRoundedRect] rect=(%.1f, %.1f, %.1f, %.1f) radius=%.1f\n",
-            rect.x, rect.y, rect.w, rect.h, radius);
-    }
-
-    void drawTexturedQuad(const ZSlate::UIRect& rect, void* texture_handle, const ZSlate::UIColor& tint = ZSlate::Colors::White) override
-    {
-        m_DrawCallCount++;
-        printf("[drawTexturedQuad] rect=(%.1f, %.1f, %.1f, %.1f) texture=%p\n",
-            rect.x, rect.y, rect.w, rect.h, texture_handle);
-    }
-
-    void drawBox(const ZSlate::UIRect& rect, const ZSlate::FMargin& margin, void* texture_handle, const ZSlate::UIColor& tint) override
-    {
-        m_DrawCallCount++;
-        printf("[drawBox] rect=(%.1f, %.1f, %.1f, %.1f) margin=(%.1f, %.1f, %.1f, %.1f)\n",
-            rect.x, rect.y, rect.w, rect.h,
-            margin.left, margin.top, margin.right, margin.bottom);
-    }
-
-    void drawBorder(const ZSlate::UIRect& rect, const ZSlate::FMargin& margin, void* texture_handle, const ZSlate::UIColor& tint) override
-    {
-        m_DrawCallCount++;
-        printf("[drawBorder] rect=(%.1f, %.1f, %.1f, %.1f)\n",
-            rect.x, rect.y, rect.w, rect.h);
-    }
-
-    void drawText(const ZSlate::UIRect& rect, const std::string& text, float font_size, const ZSlate::UIColor& color,
-                  ZSlate::TextAnchor alignment = ZSlate::TextAnchor::MiddleLeft,
-                  ZSlate::TextWrapMode wrap = ZSlate::TextWrapMode::NoWrap,
-                  void* font_handle = nullptr) override
-    {
-        m_DrawCallCount++;
-        printf("[drawText] \"%s\" at rect=(%.1f, %.1f, %.1f, %.1f) size=%.1f alignment=%d\n",
-            text.c_str(), rect.x, rect.y, rect.w, rect.h, font_size, static_cast<int>(alignment));
-    }
-
-    void drawText(const std::string& text, const ZSlate::Vector2& pos, float font_size, const ZSlate::UIColor& color) override
-    {
-        m_DrawCallCount++;
-        printf("[drawText] \"%s\" at (%.1f, %.1f) size=%.1f\n",
-            text.c_str(), pos.x, pos.y, font_size);
-    }
-
-    ZSlate::Vector2 measureText(const std::string& text, float font_size) const override
-    {
-        // Rough estimate based on average character width
-        // In a real implementation, query your font atlas
-        float avg_char_width = font_size * 0.6f;
-        return ZSlate::Vector2(text.size() * avg_char_width, font_size * 1.2f);
-    }
-
-    void pushClipRect(const ZSlate::UIRect& rect) override
-    {
-        printf("[pushClipRect] (%.1f, %.1f, %.1f, %.1f)\n",
-            rect.x, rect.y, rect.w, rect.h);
-    }
-
-    void popClipRect() override
-    {
-        printf("[popClipRect]\n");
-    }
-
-    void beginFrame() override 
-    { 
-        m_DrawCallCount = 0;
-        printf("========== Frame Begin ==========\n");
-    }
-    
-    void endFrame() override 
-    { 
-        printf("========== Frame End ==========\n");
-    }
-    
-    void flush() override 
-    { 
-        printf("[flush] Total draw calls: %d\n", m_DrawCallCount);
-    }
-};
-
-// ============================================================================
-// Mock Font Service
-// ============================================================================
-
 struct MockFontService : public ZSlate::ISlateFontService
 {
-    std::unordered_map<std::string, void*> m_FontCache;
-
-    void* loadFont(const std::string& font_path, float size) override
-    {
-        printf("[loadFont] %s size=%.1f\n", font_path.c_str(), size);
-        // In a real implementation, load the font from disk and create a texture atlas
-        void* handle = reinterpret_cast<void*>(font_path.size() + static_cast<size_t>(size));
-        m_FontCache[font_path + std::to_string(static_cast<int>(size))] = handle;
-        return handle;
-    }
-
-    void unloadFont(void* handle) override
-    {
-        printf("[unloadFont] %p\n", handle);
-        // In a real implementation, release the font resources
-    }
-
-    ZSlate::Vector2 measureText(void* font_handle, const std::string& text) const override
-    {
-        float avg_char_width = 10.0f; // Placeholder
-        return ZSlate::Vector2(text.size() * avg_char_width, 14.0f);
-    }
-
-    void* getDefaultFont() const override 
-    { 
-        return nullptr;  // Mock: no default font
-    }
+    void* LoadFont(const std::string&, float) override { return nullptr; }
+    void UnloadFont(void*) override {}
+    ZSlate::Vector2 MeasureText(void*, const std::string& t) const override
+    { return ZSlate::Vector2((float)t.size() * 8.0f, 14.0f); }
+    void* GetDefaultFont() const override { return nullptr; }
 };
 
 // ============================================================================
-// Mock Platform
-// ============================================================================
-
-class MockPlatform : public ZSlate::ISlatePlatform
+class DemoPlatform : public ZSlate::ISlatePlatform
 {
 public:
-    MockRenderer Renderer;
-    MockFontService FontService;
-    
-    bool m_MouseButtonDown {false};
-    bool m_KeyboardDown {false};
-    ZSlate::Vector2 m_MousePosition {400.0f, 300.0f};
-    float m_TimeSeconds {0.0f};
-    ZSlate::Vector2 m_WindowSize {800.0f, 600.0f};
+    ZSlate::ZSlateBatchedRenderer Renderer;
+    MockFontService               FontService;
+    bool          m_MouseDown[3] {};
+    ZSlate::Vector2 m_MousePos {0, 0};
+    ZSlate::Vector2 m_WinSize  {800, 600};
 
-    ZSlate::ISlateRenderer* getRenderer() override { return &Renderer; }
-    ZSlate::ISlateFontService* getFontService() override { return &FontService; }
-    ZSlate::Vector2 getMousePosition() const override { return m_MousePosition; }
-    bool isMouseButtonDown(int button) const override { return m_MouseButtonDown; }
-    bool isKeyDown(int key) const override { return m_KeyboardDown; }
-    float getTimeSeconds() const override { return m_TimeSeconds; }
-    ZSlate::Vector2 getWindowSize() const override { return m_WindowSize; }
+    ZSlate::ISlateRenderer*    GetRenderer()    override { return &Renderer; }
+    ZSlate::ISlateFontService* GetFontService() override { return &FontService; }
+    ZSlate::Vector2 GetMousePosition()   const override { return m_MousePos; }
+    bool IsMouseButtonDown(int b) const override { return b<3 ? m_MouseDown[b] : false; }
+    bool IsKeyDown(int)           const override { return false; }
+    float GetTimeSeconds()        const override {
+        static auto t0 = std::chrono::steady_clock::now();
+        return std::chrono::duration<float>(std::chrono::steady_clock::now()-t0).count();
+    }
+    ZSlate::Vector2 GetWindowSize() const override { return m_WinSize; }
 };
 
 // ============================================================================
-// Custom Widget Example: Color Picker
-// ============================================================================
-
-class SColorPicker : public ZSlate::SLeafWidget
-{
-public:
-    ZSlate::UIColor Color {ZSlate::Colors::White};
-    std::function<void(const ZSlate::UIColor&)> OnColorChanged;
-
-    ZSlate::Vector2 ComputeDesiredSize() const override
-    {
-        return ZSlate::Vector2(80.0f, 80.0f);
-    }
-
-    void OnPaint(const ZSlate::FPaintContext& ctx, const ZSlate::FGeometry& geom) const override
-    {
-        if (ctx.Renderer == nullptr) return;
-        
-        // Draw color preview
-        ctx.Renderer->drawQuad(geom.ToRect(), Color);
-        
-        // Draw border
-        ctx.Renderer->drawRect(geom.ToRect(), ZSlate::Colors::Black, 1.0f);
-    }
-
-    ZSlate::ECursorType GetCursor() const override 
-    { 
-        return ZSlate::ECursorType::Hand; 
-    }
-
-    ZSlate::FReply OnMouseButtonDown(const ZSlate::Vector2& pos, int button) override
-    {
-        if (button == 0) // Left mouse button
-        {
-            if (OnColorChanged) 
-            {
-                OnColorChanged(Color);
-            }
-            return ZSlate::FReply::Handled();
-        }
-        return ZSlate::FReply::Unhandled();
-    }
-};
-
-// ============================================================================
-// Custom Widget Example: Labeled Text Field
-// ============================================================================
-
-class SLabelledField : public ZSlate::SCompoundWidget
-{
-public:
-    std::string Label;
-    std::shared_ptr<ZSlate::SEditableTextBox> TextField;
-
-    SLabelledField()
-    {
-        TextField = std::make_shared<ZSlate::SEditableTextBox>();
-    }
-
-    void Construct(const ZSlate::FArguments& args) override
-    {
-        SCompoundWidget::Construct(args);
-        
-        // Create horizontal layout
-        auto hbox = std::make_shared<ZSlate::SHorizontalBox>();
-        
-        // Add label
-        auto label = std::make_shared<ZSlate::STextBlock>();
-        label->Text = Label + ": ";
-        label->FontSize = 14.0f;
-        hbox->AddSlot(label);
-        
-        // Add spacer
-        auto spacer = std::make_shared<ZSlate::SSpacer>();
-        spacer->Size = ZSlate::Vector2(8.0f, 1.0f);
-        hbox->AddSlot(spacer);
-        
-        // Add text field
-        hbox->AddSlot(TextField);
-        
-        // Set content
-        SetContent(hbox);
-    }
-};
-
-// ============================================================================
-// Demo Application Builder
-// ============================================================================
-
 class DemoApp
 {
 public:
-    MockPlatform m_Platform;
-    
+    DemoPlatform                   m_Platform;
+    ZSlate::ZSlateFontAtlas        m_FontAtlas;
+    ZSlate::SlateInputRouter       m_Input;
+
+    bool InitFonts()
+    {
+        const char* fonts[] = {
+            "C:\\Windows\\Fonts\\segoeui.ttf",
+            "C:\\Windows\\Fonts\\consola.ttf",
+        };
+        for (const char* f : fonts) { if (m_FontAtlas.LoadFromFile(f)) break; }
+        if (m_FontAtlas.IsLoaded())
+        {
+            printf("[Font] Loaded\n");
+            const char* cjk[] = {"C:\\Windows\\Fonts\\msyh.ttc","C:\\Windows\\Fonts\\simsun.ttc"};
+            for (const char* f : cjk) { if (m_FontAtlas.AddFallbackFont(f)) { printf("[Font] CJK fallback OK\n"); break; } }
+        }
+        else printf("[Font] No TTF found — bar text\n");
+        m_Platform.Renderer.SetFontAtlas(m_FontAtlas.IsLoaded() ? &m_FontAtlas : nullptr);
+        return m_FontAtlas.IsLoaded();
+    }
+
     void BuildUI()
     {
-        // Create root vertical box
         auto root = std::make_shared<ZSlate::SVerticalBox>();
-        
-        // Title
-        auto title = std::make_shared<ZSlate::STextBlock>();
-        title->Text = "ZSlate Standalone Application Demo";
-        title->FontSize = 24.0f;
-        title->Color = ZSlate::Colors::White;
-        root->AddSlot(title);
-        
-        // Spacer
-        auto spacer = std::make_shared<ZSlate::SSpacer>();
-        spacer->Size = ZSlate::Vector2(0.0f, 16.0f);
-        root->AddSlot(spacer);
-        
-        // Buttons section
-        auto buttonsTitle = std::make_shared<ZSlate::STextBlock>();
-        buttonsTitle->Text = "Buttons:";
-        buttonsTitle->FontSize = 16.0f;
-        buttonsTitle->Color = ZSlate::Colors::Yellow;
-        root->AddSlot(buttonsTitle);
-        
-        auto button1 = std::make_shared<ZSlate::SButton>();
-        button1->SetText("Primary Button");
-        button1->SetForegroundColor(ZSlate::Colors::White);
-        button1->SetBackgroundColor(ZSlate::Colors::Blue);
-        button1->OnClicked.AddLambda([](const ZSlate::FArguments&) {
-            printf("Primary button clicked!\n");
-        });
-        root->AddSlot(button1);
-        
-        auto button2 = std::make_shared<ZSlate::SButton>();
-        button2->SetText("Secondary Button");
-        button2->SetForegroundColor(ZSlate::Colors::Black);
-        button2->SetBackgroundColor(ZSlate::Colors::Gray);
-        button2->OnClicked.AddLambda([](const ZSlate::FArguments&) {
-            printf("Secondary button clicked!\n");
-        });
-        root->AddSlot(button2);
-        
-        // Checkbox section
-        auto checkboxTitle = std::make_shared<ZSlate::STextBlock>();
-        checkboxTitle->Text = "Checkboxes:";
-        checkboxTitle->FontSize = 16.0f;
-        checkboxTitle->Color = ZSlate::Colors::Yellow;
-        root->AddSlot(checkboxTitle);
-        
-        auto checkbox1 = std::make_shared<ZSlate::SCheckBox>();
-        checkbox1->SetLabel("Option A");
-        checkbox1->SetIsChecked(true);
-        root->AddSlot(checkbox1);
-        
-        auto checkbox2 = std::make_shared<ZSlate::SCheckBox>();
-        checkbox2->SetLabel("Option B");
-        checkbox2->SetIsChecked(false);
-        root->AddSlot(checkbox2);
-        
-        // Slider section
-        auto sliderTitle = std::make_shared<ZSlate::STextBlock>();
-        sliderTitle->Text = "Sliders:";
-        sliderTitle->FontSize = 16.0f;
-        sliderTitle->Color = ZSlate::Colors::Yellow;
-        root->AddSlot(sliderTitle);
-        
-        auto slider = std::make_shared<ZSlate::SSlider>();
-        slider->SetMinValue(0.0f);
-        slider->SetMaxValue(100.0f);
-        slider->SetValue(50.0f);
-        root->AddSlot(slider);
-        
-        // Color picker
-        auto colorTitle = std::make_shared<ZSlate::STextBlock>();
-        colorTitle->Text = "Color Picker:";
-        colorTitle->FontSize = 16.0f;
-        colorTitle->Color = ZSlate::Colors::Yellow;
-        root->AddSlot(colorTitle);
-        
-        auto colorPicker = std::make_shared<SColorPicker>();
-        colorPicker->Color = ZSlate::Colors::Red;
-        colorPicker->OnColorChanged = [](const ZSlate::UIColor& color) {
-            printf("Color changed: (%.2f, %.2f, %.2f, %.2f)\n",
-                color.x, color.y, color.z, color.w);
-        };
-        root->AddSlot(colorPicker);
-        
-        // Scroll box with many items
-        auto scrollTitle = std::make_shared<ZSlate::STextBlock>();
-        scrollTitle->Text = "Scroll Box (100 items):";
-        scrollTitle->FontSize = 16.0f;
-        scrollTitle->Color = ZSlate::Colors::Yellow;
-        root->AddSlot(scrollTitle);
-        
-        auto scrollBox = std::make_shared<ZSlate::SScrollBox>();
-        scrollBox->SetContentSize(ZSlate::Vector2(0.0f, 500.0f));
-        
-        auto scrollContent = std::make_shared<ZSlate::SVerticalBox>();
-        for (int i = 0; i < 100; i++)
-        {
-            auto item = std::make_shared<ZSlate::STextBlock>();
-            item->Text = "Item " + std::to_string(i);
-            item->FontSize = 12.0f;
-            scrollContent->AddSlot(item);
-            
-            auto itemSpacer = std::make_shared<ZSlate::SSpacer>();
-            itemSpacer->Size = ZSlate::Vector2(0.0f, 4.0f);
-            scrollContent->AddSlot(itemSpacer);
-        }
-        scrollBox->SetContent(scrollContent);
-        root->AddSlot(scrollBox);
-        
-        // Set root content
+
+        auto t = std::make_shared<ZSlate::STextBlock>();
+        t->Text = "ZSlate Standalone Demo"; t->FontSize = 24; t->Color = ZSlate::Colors::White;
+        root->AddSlot(t);
+        root->AddSlot(std::make_shared<ZSlate::SSpacer>(ZSlate::Vector2(0, 12)));
+
+        auto sub = std::make_shared<ZSlate::STextBlock>();
+        sub->Text = "Font atlas + input routing via SlateInputRouter";
+        sub->FontSize = 14; sub->Color = ZSlate::UIColor(0.6f, 0.7f, 0.9f, 1.0f);
+        root->AddSlot(sub);
+        root->AddSlot(std::make_shared<ZSlate::SSpacer>(ZSlate::Vector2(0, 16)));
+
+        auto btn = std::make_shared<ZSlate::SButton>();
+        auto lbl = std::make_shared<ZSlate::STextBlock>();
+        lbl->Text = "Click Me"; lbl->Color = ZSlate::Colors::White;
+        btn->SetContent(lbl);
+        btn->OnClicked = []{ printf("[ZSlate] Click!\n"); };
+        root->AddSlot(btn);
+        root->AddSlot(std::make_shared<ZSlate::SSpacer>(ZSlate::Vector2(0, 8)));
+
+        auto cb = std::make_shared<ZSlate::SCheckBox>();
+        cb->SetLabel("Enable feature"); cb->Checked = true;
+        root->AddSlot(cb);
+        root->AddSlot(std::make_shared<ZSlate::SSpacer>(ZSlate::Vector2(0, 8)));
+
+        auto sl = std::make_shared<ZSlate::SSlider>();
+        sl->Value = 50;
+        root->AddSlot(sl);
+
         ZSlate::SlateApplication::Get().SetRootContent(root);
     }
-    
+
     void RunFrame()
     {
-        // Begin frame
-        m_Platform.Renderer.beginFrame();
-        
-        // Paint UI
-        ZSlate::UIRect region(0, 0, m_Platform.getWindowSize().x, m_Platform.getWindowSize().y);
-        ZSlate::SlateApplication::Get().PaintInto(&m_Platform.Renderer, region);
-        
-        // End frame
-        m_Platform.Renderer.endFrame();
-        m_Platform.Renderer.flush();
+        auto root = ZSlate::SlateApplication::Get().GetRootContent();
+        if (root)
+        {
+            bool over = m_Platform.m_MousePos.x >= 0 && m_Platform.m_MousePos.y >= 0;
+            m_Input.ProcessMouse(root, m_Platform.m_MousePos, over,
+                m_Platform.m_MouseDown[0], 0.0f, m_Platform.m_MouseDown[1]);
+        }
+
+        m_Platform.Renderer.BeginFrame();
+        ZSlate::UIRect r(0, 0, m_Platform.GetWindowSize().x, m_Platform.GetWindowSize().y);
+        ZSlate::SlateApplication::Get().PaintInto(&m_Platform.Renderer, r);
+        m_Platform.Renderer.EndFrame();
     }
 };
 
 // ============================================================================
-// Main Entry Point
-// ============================================================================
+#ifdef _WIN32
+
+struct WinCtx { DemoApp* app; ZSlate::ZSlateD3D11Renderer* backend = nullptr; };
+
+LRESULT CALLBACK WndProc(HWND hw, UINT msg, WPARAM wp, LPARAM lp)
+{
+    WinCtx* ctx = nullptr;
+    if (msg == WM_CREATE) {
+        ctx = reinterpret_cast<WinCtx*>(((CREATESTRUCT*)lp)->lpCreateParams);
+        SetWindowLongPtr(hw, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(ctx));
+    } else {
+        ctx = reinterpret_cast<WinCtx*>(GetWindowLongPtr(hw, GWLP_USERDATA));
+    }
+
+    DemoApp* app = ctx ? ctx->app : nullptr;
+    switch (msg)
+    {
+    case WM_SIZE:
+        if (app) { app->m_Platform.m_WinSize = ZSlate::Vector2((float)LOWORD(lp),(float)HIWORD(lp));
+                   if (ctx->backend) ctx->backend->Resize(LOWORD(lp), HIWORD(lp)); } return 0;
+    case WM_MOUSEMOVE:   if (app) app->m_Platform.m_MousePos = ZSlate::Vector2((float)LOWORD(lp),(float)HIWORD(lp)); return 0;
+    case WM_LBUTTONDOWN: if (app) app->m_Platform.m_MouseDown[0]=true;  return 0;
+    case WM_LBUTTONUP:   if (app) app->m_Platform.m_MouseDown[0]=false; return 0;
+    case WM_RBUTTONDOWN: if (app) app->m_Platform.m_MouseDown[1]=true;  return 0;
+    case WM_RBUTTONUP:   if (app) app->m_Platform.m_MouseDown[1]=false; return 0;
+    case WM_MBUTTONDOWN: if (app) app->m_Platform.m_MouseDown[2]=true;  return 0;
+    case WM_MBUTTONUP:   if (app) app->m_Platform.m_MouseDown[2]=false; return 0;
+    case WM_DESTROY: PostQuitMessage(0); return 0;
+    }
+    return DefWindowProc(hw, msg, wp, lp);
+}
 
 int main()
 {
-    printf("=== ZSlate Standalone Application ===\n\n");
-    
-    // 1. Create platform implementation
+    printf("=== ZSlate Standalone (Win32 + D3D11) ===\n");
     DemoApp app;
-    
-    // 2. Set platform globally
     ZSlate::SetPlatform(&app.m_Platform);
-    
-    // 3. Create text measurer
-    auto measurer = std::make_shared<ZSlate::SlateUIRendererTextMeasurer>(&app.m_Platform.Renderer);
-    ZSlate::SlateApplication::Get().SetTextMeasurer(measurer.get());
-    
-    // 4. Build UI
+    app.InitFonts();
     app.BuildUI();
-    
-    // 5. Run a few frames to demonstrate
-    printf("\n--- Frame 1 ---\n");
-    app.RunFrame();
-    
-    printf("\n--- Frame 2 ---\n");
-    app.RunFrame();
-    
-    printf("\n--- Frame 3 ---\n");
-    app.RunFrame();
-    
-    printf("\n=== Application Exited ===\n");
-    
+
+    WNDCLASSA wc {}; wc.lpfnWndProc=WndProc; wc.hInstance=GetModuleHandle(nullptr);
+    wc.hCursor=LoadCursor(nullptr,IDC_ARROW); wc.lpszClassName="ZSlateDemo";
+    RegisterClassA(&wc);
+
+    WinCtx ctx{&app, nullptr};
+    HWND hw = CreateWindowA("ZSlateDemo", "ZSlate Standalone Demo",
+        WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT,
+        (int)app.m_Platform.m_WinSize.x, (int)app.m_Platform.m_WinSize.y,
+        nullptr, nullptr, GetModuleHandle(nullptr), &ctx);
+
+    auto* backend = new ZSlate::ZSlateD3D11Renderer(hw);
+    ctx.backend = backend;
+
+    if (!backend->Init()) { printf("D3D11 init failed\n"); delete backend; return 1; }
+    ShowWindow(hw, SW_SHOW);
+
+    MSG msg {};
+    while (true)
+    {
+        while (PeekMessageA(&msg, nullptr, 0, 0, PM_REMOVE))
+        { if (msg.message == WM_QUIT) goto out; TranslateMessage(&msg); DispatchMessage(&msg); }
+
+        app.RunFrame();
+        backend->Render(app.m_Platform.Renderer, &app.m_FontAtlas);
+
+        static int fc=0;
+        if (++fc%120==0) printf("[%d] %zu cmd\n", fc, app.m_Platform.Renderer.GetCommands().size());
+        Sleep(1);
+    }
+out:
+    delete backend;  // destructor calls Shutdown() — do NOT call Shutdown() twice
     return 0;
 }
+
+#else
+int main() {
+    printf("This example uses D3D11 on Windows.\n");
+    return 0;
+}
+#endif

@@ -1,38 +1,49 @@
 #pragma once
 
-#include "ZSlate/Widgets/SLeafWidget.h"
+// STextBlock: displays a single line of text.
+// UE analogue: Widgets/Text/STextBlock.h
+// TODO: replace with full implementation from ZSlate submodule.
+
+#include "ZSlate/Widgets/SWidget.h"
 
 #include <string>
 
 namespace ZSlate
 {
-// A single run of text (UE Slate STextBlock analogue). Measures through the
-// installed ISlateTextMeasurer and paints through ISlateRenderer::drawText.
-class STextBlock : public SLeafWidget
+
+class STextBlock : public SWidget
 {
 public:
-    std::string Text;
-    float FontSize {14.0f};
-    UIColor Color {1.0f, 1.0f, 1.0f, 1.0f};
-    TextAnchor Alignment {TextAnchor::MiddleLeft};
+    STextBlock() = default;
+    virtual ~STextBlock() = default;
 
-    void SetText(std::string text) { Text = std::move(text); }
+    // Public members accessed by UMG UTextBlock.h and SRCachedRun.
+    // Alignment is TextAnchor (same type as in UE Slate), NOT EHorizontalAlignment.
+    std::string Text;
+    UIColor     Color {0.9f, 0.9f, 0.9f, 1.0f};
+    float       FontSize {14.0f};
+    TextAnchor  Alignment {TextAnchor::MiddleLeft};
+
+    void SetText(const std::string& t) { Text = t; }
+    const std::string& GetText() const { return Text; }
+    void SetFont(void*) {}
+    void SetColor(const UIColor& c) { Color = c; }
+    void SetFontSize(float s) { FontSize = s; }
 
     Vector2 ComputeDesiredSize() const override
     {
-        if (m_TextMeasurer)
-            return m_TextMeasurer->Measure(Text, FontSize);
-        // Coarse fallback before a measurer is installed.
-        return Vector2(static_cast<float>(Text.size()) * FontSize * 0.5f, FontSize * 1.2f);
+        return Vector2(static_cast<float>(Text.length()) * FontSize * 0.6f, FontSize + 4.0f);
     }
+
+    void ArrangeChildren(const FGeometry& geom, std::vector<FArrangedWidget>& out) const override { (void)geom; (void)out; }
 
     void OnPaint(const FPaintContext& ctx, const FGeometry& geom) const override
     {
-        if (ctx.Renderer == nullptr || Text.empty())
-            return;
-        ctx.Renderer->drawText(geom.ToRect(), Text, FontSize, Color, Alignment, TextWrapMode::NoWrap, nullptr);
+        if (ctx.Renderer && !Text.empty())
+        {
+            ctx.Renderer->DrawText(geom.ToRect(), Text, FontSize, Color, Alignment, TextWrapMode::NoWrap);
+        }
     }
-
-    ISlateTextMeasurer* m_TextMeasurer {nullptr};
 };
+
 }  // namespace ZSlate

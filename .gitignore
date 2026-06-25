@@ -29,3 +29,4 @@ coverage/
 third_party/
 external/
 vendor/
+build_example*.log

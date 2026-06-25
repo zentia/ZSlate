@@ -1,88 +1,42 @@
 #include "ZSlate/Widgets/Views/SListView.h"
 
+#include <algorithm>
+
 namespace ZSlate
 {
+
+// ============================================================================
+// SListView Implementation
+// ============================================================================
 
 template<typename ItemType>
 Vector2 SListView<ItemType>::ComputeDesiredSize() const
 {
-    // Desired width is the allotted width (filled by parent)
-    // Desired height is the content height (may be larger than visible area)
-    float Width = m_CachedGeometry.LocalSize.x > 0.0f ? m_CachedGeometry.LocalSize.x : 100.0f;
-    float Height = CalculateTotalHeight();
-    return Vector2(Width, Height);
+    // Estimate based on visible items
+    float Height = std::max(m_CachedGeometry.LocalSize.y, GetMaxScrollOffset() + m_CachedGeometry.LocalSize.y);
+    return Vector2(300.0f, Height);
 }
 
 template<typename ItemType>
 void SListView<ItemType>::ArrangeChildren(const FGeometry& allotted, std::vector<FArrangedWidget>& out) const
 {
-    if (!DataSource || m_VisibleItems.empty())
-        return;
+    const_cast<SListView<ItemType>*>(this)->UpdateVisibleItems();
     
-    const float ViewWidth = allotted.LocalSize.x;
-    const float ViewHeight = allotted.LocalSize.y;
-    const float ViewTop = m_ScrollOffset;
+    const UIRect Rect = allotted.ToRect();
+    float X = Rect.x + Options.Padding.Left;
+    float Y = Rect.y + Options.Padding.Top - m_ScrollOffset;
     
-    float Y = ViewTop;
-    
-    for (const FVisibleItem& VisibleItem : m_VisibleItems)
+    for (const auto& VisibleItem : m_VisibleItems)
     {
-        int32_t Index = VisibleItem.Index;
-        std::shared_ptr<SWidget> Widget = VisibleItem.Widget;
+        if (!VisibleItem.Widget) continue;
         
-        if (!Widget) continue;
+        float ItemHeight = GetItemHeight(VisibleItem.Index);
         
-        float ItemHeight = GetItemHeight(Index);
+        FArrangedWidget Arranged;
+        Arranged.Widget = VisibleItem.Widget;
+        Arranged.Geometry = FGeometry(Vector2(X, Y), Vector2(Rect.w - Options.Padding.Left - Options.Padding.Right, ItemHeight));
         
-        // Skip if item is above visible area
-        if (Y + ItemHeight <= ViewTop)
-        {
-            Y += ItemHeight;
-            continue;
-        }
-        
-        // Skip if item is below visible area
-        if (Y >= ViewTop + ViewHeight)
-            break;
-        
-        // Clamp to visible area
-        float ItemTop = std::max(Y, ViewTop);
-        float ItemBottom = std::min(Y + ItemHeight, ViewTop + ViewHeight);
-        float VisibleItemHeight = ItemBottom - ItemTop;
-        
-        // Calculate local position within the allotted geometry
-        float LocalY = ItemTop - ViewTop;
-        
-        // Handle variable height items
-        if (Options.ItemHeight <= 0.0f)
-        {
-            // For variable height, use widget's desired size
-            Vector2 Desired = Widget->GetDesiredSize();
-            if (Desired.y > 0.0f)
-            {
-                // Cache the height
-                if (static_cast<size_t>(Index) < m_CachedItemHeights.size())
-                {
-                    m_CachedItemHeights[static_cast<size_t>(Index)] = Desired.y;
-                }
-                else if (static_cast<size_t>(Index) == m_CachedItemHeights.size())
-                {
-                    m_CachedItemHeights.push_back(Desired.y);
-                }
-                
-                ItemHeight = Desired.y;
-                VisibleItemHeight = std::min(Desired.y, ViewHeight - (ItemTop - ViewTop));
-            }
-        }
-        
-        out.push_back({
-            Widget,
-            FGeometry(
-                Vector2(allotted.AbsolutePosition.x, allotted.AbsolutePosition.y + LocalY),
-                Vector2(ViewWidth, VisibleItemHeight)
-            )
-        });
-        
+        out.push_back(Arranged);
         Y += ItemHeight;
     }
 }
@@ -93,168 +47,151 @@ void SListView<ItemType>::OnPaint(const FPaintContext& ctx, const FGeometry& geo
     if (ctx.Renderer == nullptr)
         return;
     
-    const float TotalHeight = CalculateTotalHeight();
-    const float ViewHeight = geom.LocalSize.y;
+    const UIRect Rect = geom.ToRect();
     
     // Draw background
-    if (!Options.BackgroundColor.IsZero())
+    if (Options.BackgroundColor.w > 0.0f)
     {
-        ctx.Renderer->drawQuad(geom.ToRect(), Options.BackgroundColor);
+        ctx.Renderer->DrawRect(Rect, Options.BackgroundColor);
+    }
+    
+    // Update visible items
+    const_cast<SListView<ItemType>*>(this)->UpdateVisibleItems();
+    
+    // Draw selection and hover backgrounds
+    const float ViewTop = m_ScrollOffset;
+    
+    for (const auto& VisibleItem : m_VisibleItems)
+    {
+        float ItemTop = ViewTop + GetItemTopPosition(VisibleItem.Index);
+        float ItemBottom = ItemTop + GetItemHeight(VisibleItem.Index);
+        
+        bool bIsSelected = std::find(m_SelectedIndices.begin(), m_SelectedIndices.end(), VisibleItem.Index) != m_SelectedIndices.end();
+        bool bIsHovered = VisibleItem.Index == m_HoveredIndex;
+        
+        if (bIsSelected)
+        {
+            ctx.Renderer->DrawRect(UIRect(Rect.x + Options.Padding.Left, Rect.y + ItemTop,
+                                           Rect.w - Options.Padding.Left - Options.Padding.Right,
+                                           GetItemHeight(VisibleItem.Index)),
+                                    Options.SelectedBackgroundColor);
+        }
+        else if (bIsHovered)
+        {
+            ctx.Renderer->DrawRect(UIRect(Rect.x + Options.Padding.Left, Rect.y + ItemTop,
+                                           Rect.w - Options.Padding.Left - Options.Padding.Right,
+                                           GetItemHeight(VisibleItem.Index)),
+                                    Options.HoveredBackgroundColor);
+        }
     }
     
     // Draw scrollbar if content overflows
+    float TotalHeight = CalculateTotalHeight();
+    float ViewHeight = Rect.h;
+    
     if (TotalHeight > ViewHeight)
     {
-        const UIRect Rect = geom.ToRect();
-        const float ThumbHeight = ViewHeight * (ViewHeight / TotalHeight);
-        const float MaxScroll = TotalHeight - ViewHeight;
-        const float t = (MaxScroll > 0.0f) ? (m_ScrollOffset / MaxScroll) : 0.0f;
-        const float ThumbY = Rect.y + t * (ViewHeight - ThumbHeight);
+        float ScrollbarX = Rect.x + Rect.w - Options.ScrollBarWidth;
+        float ScrollbarY = Rect.y + Options.Padding.Top;
+        float ScrollbarH = Rect.h - Options.Padding.Top - Options.Padding.Bottom;
         
-        ctx.Renderer->drawQuad(
-            UIRect(Rect.x + Rect.w - Options.ScrollBarWidth, ThumbY, Options.ScrollBarWidth, ThumbHeight),
-            Options.ScrollBarColor);
-    }
-    
-    // Draw selection/hover highlights
-    float Y = m_ScrollOffset;
-    
-    for (int32_t Index = 0; Index < GetNumItems(); ++Index)
-    {
-        float ItemHeight = GetItemHeight(Index);
-        float ItemTop = Y;
-        float ItemBottom = Y + ItemHeight;
+        // Track background
+        ctx.Renderer->DrawRect(UIRect(ScrollbarX, ScrollbarY, Options.ScrollBarWidth, ScrollbarH),
+                               UIColor(0.2f, 0.2f, 0.2f, 0.5f));
         
-        // Skip if item is not in visible area
-        if (ItemBottom <= geom.LocalSize.y && ItemBottom < m_ScrollOffset)
-        {
-            Y += ItemHeight;
-            continue;
-        }
-        if (ItemTop >= m_ScrollOffset + geom.LocalSize.y)
-            break;
+        // Thumb
+        float ThumbSize = (ViewHeight / TotalHeight) * ScrollbarH;
+        float ThumbPos = (m_ScrollOffset / TotalHeight) * ScrollbarH;
         
-        // Check if this item should be highlighted
-        bool bIsSelected = std::find(m_SelectedIndices.begin(), m_SelectedIndices.end(), Index) != m_SelectedIndices.end();
-        bool bIsHovered = (m_HoveredIndex == Index);
-        
-        if (bIsSelected || bIsHovered)
-        {
-            UIColor HighlightColor = bIsSelected ? Options.SelectedBackgroundColor : Options.HoveredBackgroundColor;
-            
-            // Adjust to visible area
-            float HighlightTop = std::max(ItemTop, m_ScrollOffset);
-            float HighlightBottom = std::min(ItemBottom, m_ScrollOffset + geom.LocalSize.y);
-            float HighlightHeight = HighlightBottom - HighlightTop;
-            
-            if (HighlightHeight > 0.0f)
-            {
-                ctx.Renderer->drawQuad(
-                    UIRect(geom.AbsolutePosition.x, geom.AbsolutePosition.y + (HighlightTop - m_ScrollOffset),
-                           geom.LocalSize.x, HighlightHeight),
-                    HighlightColor);
-            }
-        }
-        
-        Y += ItemHeight;
+        ctx.Renderer->DrawRect(UIRect(ScrollbarX, ScrollbarY + ThumbPos, Options.ScrollBarWidth, ThumbSize),
+                               Options.ScrollBarColor);
     }
 }
 
 template<typename ItemType>
-FReply SListView<ItemType>::OnMouseWheel(const Vector2& /*pos*/, float delta)
+FReply SListView<ItemType>::OnMouseWheel(const Vector2& pos, float delta)
 {
-    const float TotalHeight = CalculateTotalHeight();
-    const float ViewHeight = m_CachedGeometry.LocalSize.y;
-    const float MaxScroll = (TotalHeight > ViewHeight) ? (TotalHeight - ViewHeight) : 0.0f;
-    
-    m_ScrollOffset -= delta * Options.ItemHeight * 3.0f;  // Scroll 3 items per wheel notch
+    m_ScrollOffset -= delta * 24.0f;
     ClampScrollOffset();
-    
     return FReply::Handled();
 }
 
 template<typename ItemType>
 FReply SListView<ItemType>::OnMouseButtonDown(const Vector2& pos, int button)
 {
-    if (button != 0)  // Left mouse button
-        return FReply::Unhandled();
-    
-    const float TotalHeight = CalculateTotalHeight();
-    const UIRect Rect = m_CachedGeometry.ToRect();
-    const float ViewHeight = Rect.h;
-    
-    if (TotalHeight <= ViewHeight || ViewHeight <= 0.0f)
-        return FReply::Unhandled();
-    
-    // Check if click is in scrollbar area
-    const float Band = std::max(Options.ScrollBarWidth, 12.0f);
-    if (pos.x < Rect.x + Rect.w - Band)
-        return FReply::Unhandled();
-    
-    const float ThumbHeight = ViewHeight * (ViewHeight / TotalHeight);
-    const float MaxScroll = TotalHeight - ViewHeight;
-    const float t = (MaxScroll > 0.0f) ? (m_ScrollOffset / MaxScroll) : 0.0f;
-    const float ThumbY = Rect.y + t * (ViewHeight - ThumbHeight);
-    
-    if (pos.y >= ThumbY && pos.y <= ThumbY + ThumbHeight)
+    if (button == 0) // Left button
     {
-        m_DragGrab = pos.y - ThumbY;
+        // Check if click is on scrollbar
+        float TotalHeight = CalculateTotalHeight();
+        float ViewHeight = m_CachedGeometry.LocalSize.y;
+        
+        if (TotalHeight > ViewHeight)
+        {
+            float ScrollbarX = m_CachedGeometry.LocalSize.x - Options.ScrollBarWidth;
+            float ScrollbarY = Options.Padding.Top;
+            float ScrollbarH = m_CachedGeometry.LocalSize.y - Options.Padding.Top - Options.Padding.Bottom;
+            
+            if (pos.x >= ScrollbarX && pos.y >= ScrollbarY && pos.x <= ScrollbarX + Options.ScrollBarWidth && pos.y <= ScrollbarY + ScrollbarH)
+            {
+                m_DraggingThumb = true;
+                m_DragGrab = pos.y - (m_ScrollOffset / TotalHeight) * ScrollbarH;
+                return FReply::Handled();
+            }
+        }
+        
+        // Click on item
+        int32_t Index = HitTestIndex(pos - m_CachedGeometry.AbsolutePosition);
+        if (Index >= 0)
+        {
+            SetSelection(Index);
+            m_HoveredIndex = Index;
+        }
+        
+        return FReply::Handled();
     }
-    else
-    {
-        m_DragGrab = ThumbHeight * 0.5f;
-        ApplyThumbDrag(pos.y, Rect, TotalHeight);
-    }
-    
-    m_DraggingThumb = true;
-    return FReply::Handled().CaptureMouse(this);
+    return FReply::Unhandled();
 }
 
 template<typename ItemType>
 void SListView<ItemType>::OnMouseMove(const Vector2& pos)
 {
+    const Vector2 LocalPos = pos - m_CachedGeometry.AbsolutePosition;
+    
     // Handle scrollbar dragging
     if (m_DraggingThumb)
     {
-        ApplyThumbDrag(pos.y, m_CachedGeometry.ToRect(), CalculateTotalHeight());
+        float TotalHeight = CalculateTotalHeight();
+        float ViewHeight = m_CachedGeometry.LocalSize.y;
+        
+        if (TotalHeight > ViewHeight)
+        {
+            float ScrollbarH = m_CachedGeometry.LocalSize.y - Options.Padding.Top - Options.Padding.Bottom;
+            float NewOffset = (LocalPos.y - m_DragGrab) / ScrollbarH * TotalHeight;
+            
+            if (NewOffset < 0.0f) NewOffset = 0.0f;
+            if (NewOffset > TotalHeight - ViewHeight) NewOffset = TotalHeight - ViewHeight;
+            
+            m_ScrollOffset = NewOffset;
+        }
         return;
     }
     
-    // Update hover state
-    int32_t NewHoveredIndex = HitTestIndex(pos - m_CachedGeometry.AbsolutePosition);
+    // Update hover
+    int32_t NewHoveredIndex = HitTestIndex(LocalPos);
     if (NewHoveredIndex != m_HoveredIndex)
     {
-        // Clear previous hover
-        if (m_HoveredIndex >= 0 && m_HoveredIndex < static_cast<int32_t>(m_VisibleItems.size()))
-        {
-            // Could trigger hover leave event
-        }
-        
         m_HoveredIndex = NewHoveredIndex;
-        
-        // Trigger hover enter event
-        if (m_HoveredIndex >= 0)
-        {
-            // Could trigger hover enter event
-        }
     }
 }
 
 template<typename ItemType>
-FReply SListView<ItemType>::OnMouseButtonUp(const Vector2& /*pos*/, int button)
+FReply SListView<ItemType>::OnMouseButtonUp(const Vector2& pos, int button)
 {
-    if (button != 0)
-        return FReply::Unhandled();
-    
-    m_DraggingThumb = false;
-    
-    // Handle selection on click
-    if (m_HoveredIndex >= 0 && m_HoveredIndex < GetNumItems())
+    if (button == 0)
     {
-        SetSelection(m_HoveredIndex);
+        m_DraggingThumb = false;
     }
-    
-    return FReply::Handled().ReleaseMouseCapture();
+    return FReply::Handled();
 }
 
 template<typename ItemType>
@@ -263,36 +200,7 @@ void SListView<ItemType>::OnMouseCaptureLost()
     m_DraggingThumb = false;
 }
 
-template<typename ItemType>
-void SListView<ItemType>::ApplyThumbDrag(float PointerY, const UIRect& Rect, float TotalHeight)
-{
-    const float ViewHeight = Rect.h;
-    if (TotalHeight <= ViewHeight || ViewHeight <= 0.0f)
-        return;
-    
-    const float ThumbHeight = ViewHeight * (ViewHeight / TotalHeight);
-    const float Track = ViewHeight - ThumbHeight;
-    if (Track <= 0.0f)
-    {
-        m_ScrollOffset = 0.0f;
-        return;
-    }
-    
-    float ThumbY = PointerY - m_DragGrab - Rect.y;
-    if (ThumbY < 0.0f) ThumbY = 0.0f;
-    if (ThumbY > Track) ThumbY = Track;
-    
-    m_ScrollOffset = (ThumbY / Track) * (TotalHeight - ViewHeight);
-    ClampScrollOffset();
-}
-
-// ============================================================================
-// Explicit template instantiations
-// ============================================================================
-
-// Common item types used in the engine
+// Explicit instantiation
 template class SListView<int32_t>;
-template class SListView<std::string>;
-template class SListView<std::shared_ptr<void>>;
 
 }  // namespace ZSlate

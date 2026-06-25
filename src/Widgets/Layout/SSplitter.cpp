@@ -24,7 +24,7 @@ public:
     {
         if (ctx.Renderer == nullptr)
             return;
-        ctx.Renderer->drawQuad(geom.ToRect(), m_Hovered ? HoverColor : NormalColor);
+        ctx.Renderer->DrawQuad(geom.ToRect(), m_Hovered ? HoverColor : NormalColor);
     }
 
     void OnMouseEnter() override { m_Hovered = true; }

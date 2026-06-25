@@ -17,74 +17,74 @@
 
 struct MockRenderer : public ZSlate::ISlateRenderer
 {
-    void drawQuad(const ZSlate::UIRect& rect, const ZSlate::UIColor& color) override
+    void DrawQuad(const ZSlate::UIRect& rect, const ZSlate::UIColor& color) override
     {
-        printf("drawQuad: (%.1f, %.1f, %.1f, %.1f) color=(%.2f, %.2f, %.2f, %.2f)\n",
+        printf("DrawQuad: (%.1f, %.1f, %.1f, %.1f) color=(%.2f, %.2f, %.2f, %.2f)\n",
             rect.x, rect.y, rect.w, rect.h,
             color.x, color.y, color.z, color.w);
     }
 
-    void drawRect(const ZSlate::UIRect& rect, const ZSlate::UIColor& color) override
+    void DrawRect(const ZSlate::UIRect& rect, const ZSlate::UIColor& color) override
     {
-        printf("drawRect: (%.1f, %.1f, %.1f, %.1f)\n",
+        printf("DrawRect: (%.1f, %.1f, %.1f, %.1f)\n",
             rect.x, rect.y, rect.w, rect.h);
     }
 
-    void drawConvexPoly(const std::vector<ZSlate::Vector2>& points, const ZSlate::UIColor& color) override
+    void DrawConvexPoly(const std::vector<ZSlate::Vector2>& points, const ZSlate::UIColor& color) override
     {
-        printf("drawConvexPoly: %zu points\n", points.size());
+        printf("DrawConvexPoly: %zu points\n", points.size());
     }
 
-    void drawRoundedRect(const ZSlate::UIRect& rect, float radius, const ZSlate::UIColor& color) override
+    void DrawRoundedRect(const ZSlate::UIRect& rect, float radius, const ZSlate::UIColor& color) override
     {
-        printf("drawRoundedRect: (%.1f, %.1f, %.1f, %.1f) radius=%.1f\n",
+        printf("DrawRoundedRect: (%.1f, %.1f, %.1f, %.1f) radius=%.1f\n",
             rect.x, rect.y, rect.w, rect.h, radius);
     }
 
-    void drawTexturedQuad(const ZSlate::UIRect& rect, void* texture_handle, const ZSlate::UIColor& tint = ZSlate::Colors::White) override
+    void DrawTexturedQuad(const ZSlate::UIRect& rect, void* texture_handle, const ZSlate::UIColor& tint = ZSlate::Colors::White) override
     {
-        printf("drawTexturedQuad: (%.1f, %.1f, %.1f, %.1f) texture=%p\n",
+        printf("DrawTexturedQuad: (%.1f, %.1f, %.1f, %.1f) texture=%p\n",
             rect.x, rect.y, rect.w, rect.h, texture_handle);
     }
 
-    void drawBox(const ZSlate::UIRect& rect, const ZSlate::FMargin& margin, void* texture_handle, const ZSlate::UIColor& tint) override
+    void DrawBox(const ZSlate::UIRect& rect, const ZSlate::FMargin& margin, void* texture_handle, const ZSlate::UIColor& tint) override
     {
-        printf("drawBox: (%.1f, %.1f, %.1f, %.1f)\n",
+        printf("DrawBox: (%.1f, %.1f, %.1f, %.1f)\n",
             rect.x, rect.y, rect.w, rect.h);
     }
 
-    void drawBorder(const ZSlate::UIRect& rect, const ZSlate::FMargin& margin, void* texture_handle, const ZSlate::UIColor& tint) override
+    void DrawBorder(const ZSlate::UIRect& rect, const ZSlate::FMargin& margin, void* texture_handle, const ZSlate::UIColor& tint) override
     {
-        printf("drawBorder: (%.1f, %.1f, %.1f, %.1f)\n",
+        printf("DrawBorder: (%.1f, %.1f, %.1f, %.1f)\n",
             rect.x, rect.y, rect.w, rect.h);
     }
 
-    void drawText(const std::string& text, const ZSlate::Vector2& pos, float font_size, const ZSlate::UIColor& color) override
+    void DrawText(const std::string& text, const ZSlate::Vector2& pos, float font_size, const ZSlate::UIColor& color) override
     {
-        printf("drawText: \"%s\" at (%.1f, %.1f) size=%.1f\n",
+        printf("DrawText: \"%s\" at (%.1f, %.1f) size=%.1f\n",
             text.c_str(), pos.x, pos.y, font_size);
     }
 
-    ZSlate::Vector2 measureText(const std::string& text, float font_size) const override
+    ZSlate::Vector2 MeasureText(const std::string& text, float font_size) const override
     {
         // Rough estimate
         return ZSlate::Vector2(text.size() * font_size * 0.6f, font_size * 1.2f);
     }
 
-    void pushClipRect(const ZSlate::UIRect& rect) override
+    void PushClipRect(const ZSlate::UIRect& rect) override
     {
-        printf("pushClipRect: (%.1f, %.1f, %.1f, %.1f)\n",
+        printf("PushClipRect: (%.1f, %.1f, %.1f, %.1f)\n",
             rect.x, rect.y, rect.w, rect.h);
     }
 
-    void popClipRect() override
+    void PopClipRect() override
     {
-        printf("popClipRect\n");
+        printf("PopClipRect\n");
     }
 
-    void beginFrame() override { printf("--- beginFrame ---\n"); }
-    void endFrame() override { printf("--- endFrame ---\n"); }
-    void flush() override { printf("--- flush ---\n"); }
+    void BeginFrame() override { printf("--- BeginFrame ---\n"); }
+    void EndFrame() override { printf("--- EndFrame ---\n"); }
+    void Flush() override { printf("--- Flush ---\n"); }
 };
 
 // ============================================================================
@@ -104,7 +104,7 @@ struct MockFontService : public ZSlate::ISlateFontService
         printf("unloadFont: %p\n", handle);
     }
 
-    ZSlate::Vector2 measureText(void* font_handle, const std::string& text) const override
+    ZSlate::Vector2 MeasureText(void* font_handle, const std::string& text) const override
     {
         return ZSlate::Vector2(text.size() * 10.0f, 14.0f);
     }
@@ -152,10 +152,10 @@ public:
         if (ctx.Renderer == nullptr) return;
         
         // Draw button background
-        ctx.Renderer->drawQuad(geom.ToRect(), ZSlate::Colors::Blue);
+        ctx.Renderer->DrawQuad(geom.ToRect(), ZSlate::Colors::Blue);
         
         // Draw text
-        ctx.Renderer->drawText(Label, geom.AbsolutePosition, 14.0f, ZSlate::Colors::White);
+        ctx.Renderer->DrawText(Label, geom.AbsolutePosition, 14.0f, ZSlate::Colors::White);
     }
 
     ZSlate::ECursorType GetCursor() const override { return ZSlate::ECursorType::Hand; }
@@ -207,11 +207,11 @@ int main()
     ZSlate::SlateApplication::Get().SetRootContent(root);
 
     // 5. Paint a frame
-    platform.Renderer.beginFrame();
+    platform.Renderer.BeginFrame();
     ZSlate::UIRect region(0, 0, 800, 600);
     ZSlate::SlateApplication::Get().PaintInto(&platform.Renderer, region);
-    platform.Renderer.endFrame();
-    platform.Renderer.flush();
+    platform.Renderer.EndFrame();
+    platform.Renderer.Flush();
 
     return 0;
 }

@@ -1,49 +1,38 @@
 #pragma once
 
+// Minimal SCompoundWidget stub — ZEditor build dependency.
+// TODO: replace with full implementation from ZSlate submodule.
+
+#include "ZSlate/Core/SlateGeometry.h"
 #include "ZSlate/Widgets/SWidget.h"
 
 namespace ZSlate
 {
-// A widget that wraps exactly one content child and adds padding + alignment
-// (UE Slate SCompoundWidget analogue). Base for SBox / SBorder / SButton.
+
+// SCompoundWidget: base class for widgets that own one child.
 class SCompoundWidget : public SWidget
 {
 public:
-    FMargin Padding;
+    std::shared_ptr<SWidget> m_Child;
+
+    // Layout properties accessed by SMenuItem, SMenu, etc.
+    FMargin   Padding;
     EHorizontalAlignment HAlign {EHorizontalAlignment::Fill};
-    EVerticalAlignment VAlign {EVerticalAlignment::Fill};
+    EVerticalAlignment VAlign {EVerticalAlignment::Center};
 
-    void SetContent(std::shared_ptr<SWidget> content) { m_Content = std::move(content); }
-    std::shared_ptr<SWidget> GetContent() const { return m_Content; }
-
-    int GetChildCount() const override { return m_Content ? 1 : 0; }
-    std::shared_ptr<SWidget> GetChildAt(int index) const override { return index == 0 ? m_Content : nullptr; }
+    void SetContent(std::shared_ptr<SWidget> w) { m_Child = w; }
 
     Vector2 ComputeDesiredSize() const override
     {
-        Vector2 content_size(0.0f, 0.0f);
-        if (m_Content && m_Content->Visibility != EVisibility::Collapsed)
-            content_size = m_Content->GetDesiredSize();
-        return Vector2(content_size.x + Padding.GetTotalHorizontal(),
-                       content_size.y + Padding.GetTotalVertical());
+        if (m_Child) return m_Child->ComputeDesiredSize();
+        return Vector2(0.0f, 0.0f);
     }
 
     void ArrangeChildren(const FGeometry& allotted, std::vector<FArrangedWidget>& out) const override
     {
-        if (!m_Content || m_Content->Visibility == EVisibility::Collapsed)
-            return;
-
-        const float region_x = allotted.AbsolutePosition.x + Padding.Left;
-        const float region_y = allotted.AbsolutePosition.y + Padding.Top;
-        const float region_w = allotted.LocalSize.x - Padding.GetTotalHorizontal();
-        const float region_h = allotted.LocalSize.y - Padding.GetTotalVertical();
-
-        const FGeometry child_geom = AlignChildInRegion(
-            region_x, region_y, region_w, region_h, m_Content->GetDesiredSize(), HAlign, VAlign);
-        out.push_back({m_Content, child_geom});
+        if (m_Child)
+            out.push_back(FArrangedWidget{m_Child, allotted});
     }
-
-protected:
-    std::shared_ptr<SWidget> m_Content;
 };
+
 }  // namespace ZSlate

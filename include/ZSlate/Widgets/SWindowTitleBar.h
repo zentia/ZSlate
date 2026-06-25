@@ -42,7 +42,7 @@ enum class EWindowGlyph
 };
 
 // Leaf icon painted as the content of a window caption button. Vector-drawn
-// (drawRect / drawText) so it stays crisp at any DPI without a glyph atlas.
+// (DrawRect / DrawText) so it stays crisp at any DPI without a glyph atlas.
 class SWindowButtonGlyph : public SLeafWidget
 {
 public:
@@ -63,17 +63,17 @@ public:
         switch (Glyph)
         {
             case EWindowGlyph::Maximize:
-                ctx.Renderer->drawRect(UIRect(cx - box * 0.5f, cy - box * 0.5f, box, box), Color, Thickness);
+                ctx.Renderer->DrawRect(UIRect(cx - box * 0.5f, cy - box * 0.5f, box, box), Color, Thickness);
                 break;
             case EWindowGlyph::Restore:
             {
                 const float off = box * 0.30f;
-                ctx.Renderer->drawRect(UIRect(cx - box * 0.5f + off, cy - box * 0.5f - off, box, box), Color, Thickness);
-                ctx.Renderer->drawRect(UIRect(cx - box * 0.5f - off, cy - box * 0.5f + off, box, box), Color, Thickness);
+                ctx.Renderer->DrawRect(UIRect(cx - box * 0.5f + off, cy - box * 0.5f - off, box, box), Color, Thickness);
+                ctx.Renderer->DrawRect(UIRect(cx - box * 0.5f - off, cy - box * 0.5f + off, box, box), Color, Thickness);
                 break;
             }
             case EWindowGlyph::Close:
-                ctx.Renderer->drawText(r, "x", std::max(10.0f, r.h * 0.5f), Color,
+                ctx.Renderer->DrawText(r, "x", std::max(10.0f, r.h * 0.5f), Color,
                                        TextAnchor::MiddleCenter, TextWrapMode::NoWrap, nullptr);
                 break;
         }
@@ -160,14 +160,14 @@ public:
         if (ctx.Renderer == nullptr)
             return;
         const UIRect r = geom.ToRect();
-        ctx.Renderer->drawQuad(r, BarColor);
+        ctx.Renderer->DrawQuad(r, BarColor);
         const float accent_h = std::max(1.0f, BarHeight * 0.08f);
-        ctx.Renderer->drawQuad(UIRect(r.x, r.y + r.h - accent_h, r.w, accent_h), AccentColor);
+        ctx.Renderer->DrawQuad(UIRect(r.x, r.y + r.h - accent_h, r.w, accent_h), AccentColor);
         if (!Title.empty())
         {
             const float pad = BarHeight * 0.30f;
             const float text_w = std::max(1.0f, r.w - 2.0f * BarHeight - pad);
-            ctx.Renderer->drawText(UIRect(r.x + pad, r.y, text_w, r.h), Title, FontSize, TitleColor,
+            ctx.Renderer->DrawText(UIRect(r.x + pad, r.y, text_w, r.h), Title, FontSize, TitleColor,
                                    TextAnchor::MiddleLeft, TextWrapMode::NoWrap, nullptr);
         }
     }
@@ -266,7 +266,7 @@ public:
             Vector2(r.x + r.w, r.y + r.h),
             Vector2(r.x, r.y + r.h),
         };
-        ctx.Renderer->drawConvexPoly(tri, 3, Color);
+        ctx.Renderer->DrawConvexPoly(tri, 3, Color);
     }
 
     FReply OnMouseButtonDown(const Vector2& pos, int button) override

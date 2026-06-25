@@ -10,36 +10,26 @@ namespace ZSlate
 void SMultiLineEditableText::SetText(const std::string& InText)
 {
     TextContent = InText;
-    LinesStrings = SplitIntoLines(TextContent);
-    
-    // Update Lines (FTextLineInfo)
-    Lines.resize(LinesStrings.size());
-    for (size_t i = 0; i < LinesStrings.size(); ++i)
-    {
-        Lines[i].Text = LinesStrings[i];
-    }
+    Lines = SplitIntoLines(TextContent);
     
     // Clamp cursor to end of text
     CursorLocation.LineIndex = GetNumLines() > 0 ? GetNumLines() - 1 : 0;
-    if (CursorLocation.LineIndex >= 0 && CursorLocation.LineIndex < static_cast<int32_t>(Lines.size()))
-    {
-        CursorLocation.CharIndex = static_cast<int32_t>(Lines[CursorLocation.LineIndex].Text.length());
-    }
+    CursorLocation.CharIndex = static_cast<int32_t>(Lines[CursorLocation.LineIndex].Text.length());
     
     if (OnTextChanged)
         OnTextChanged(TextContent);
 }
 
-std::vector<std::string> SMultiLineEditableText::SplitIntoLines(const std::string& Text) const
+std::vector<FTextLineInfo> SMultiLineEditableText::SplitIntoLines(const std::string& Text) const
 {
-    std::vector<std::string> Result;
+    std::vector<FTextLineInfo> Result;
     std::string CurrentLine;
     
     for (char c : Text)
     {
         if (c == '\n')
         {
-            Result.push_back(std::move(CurrentLine));
+            Result.push_back(FTextLineInfo(std::move(CurrentLine)));
             CurrentLine.clear();
         }
         else if (c == '\r')
@@ -55,19 +45,19 @@ std::vector<std::string> SMultiLineEditableText::SplitIntoLines(const std::strin
     // Don't forget the last line
     if (!CurrentLine.empty() || Result.empty())
     {
-        Result.push_back(std::move(CurrentLine));
+        Result.push_back(FTextLineInfo(std::move(CurrentLine)));
     }
     
     return Result;
 }
 
-std::string SMultiLineEditableText::JoinLines(const std::vector<std::string>& Lines) const
+std::string SMultiLineEditableText::JoinLines(const std::vector<FTextLineInfo>& Lines) const
 {
     std::string Result;
     for (size_t i = 0; i < Lines.size(); ++i)
     {
         if (i > 0) Result += '\n';
-        Result += Lines[i];
+        Result += Lines[i].Text;
     }
     return Result;
 }
@@ -104,7 +94,7 @@ void SMultiLineEditableText::SetCursorLocation(const FTextLocation& Location)
 void SMultiLineEditableText::ScrollToCursor()
 {
     float CursorY = GetLineTopY(CursorLocation.LineIndex);
-    float ViewHeight = GetCachedGeometry().LocalSize.y;
+    float ViewHeight = m_CachedGeometry.LocalSize.y;
     
     if (CursorY < ScrollOffsetY)
         ScrollOffsetY = CursorY;
@@ -119,7 +109,7 @@ void SMultiLineEditableText::ScrollToLine(int32_t LineIndex)
     if (LineIndex < 0 || LineIndex >= GetNumLines()) return;
     
     float LineY = GetLineTopY(LineIndex);
-    float ViewHeight = GetCachedGeometry().LocalSize.y;
+    float ViewHeight = m_CachedGeometry.LocalSize.y;
     
     ScrollOffsetY = LineY;
     ClampScrollOffset();
@@ -132,7 +122,7 @@ void SMultiLineEditableText::InsertTextAtCursor(const std::string& InText)
     DeleteSelection();
     
     // Split input into lines
-    std::vector<std::string> NewLines = SplitIntoLines(InText);
+    std::vector<FTextLineInfo> NewLines = SplitIntoLines(InText);
     
     // Insert at cursor position
     int32_t InsertLine = CursorLocation.LineIndex;
@@ -146,13 +136,14 @@ void SMultiLineEditableText::InsertTextAtCursor(const std::string& InText)
     // Erase old line and insert new lines
     Lines.erase(Lines.begin() + InsertLine);
     
-    // Insert new lines
+    // Insert new lines (NewLines is already std::vector<FTextLineInfo>)
     std::vector<FTextLineInfo> NewLineInfos;
-    for (const std::string& NewLine : NewLines)
+    for (size_t i = 0; i < NewLines.size(); ++i)
     {
-        FTextLineInfo Info(BeforeCursor + NewLine);
+        const std::string& NewLineText = (i == 0) ? (BeforeCursor + NewLines[i].Text) : NewLines[i].Text;
+        FTextLineInfo Info(NewLineText);
         NewLineInfos.push_back(Info);
-        BeforeCursor.clear();  // Only first line gets before-cursor text
+        if (i == 0) BeforeCursor.clear();  // Only first line gets before-cursor text
     }
     
     // Add remaining after-cursor text to last new line
@@ -168,19 +159,12 @@ void SMultiLineEditableText::InsertTextAtCursor(const std::string& InText)
     // Insert new line infos
     Lines.insert(Lines.begin() + InsertLine, NewLineInfos.begin(), NewLineInfos.end());
     
-    // Update LinesStrings
-    LinesStrings.resize(Lines.size());
-    for (size_t i = 0; i < Lines.size(); ++i)
-    {
-        LinesStrings[i] = Lines[i].Text;
-    }
-    
     // Update cursor position
     CursorLocation.LineIndex = InsertLine;
     CursorLocation.CharIndex = static_cast<int32_t>(NewLineInfos[0].Text.length());
     
     // Update text content
-    TextContent = JoinLines(LinesStrings);
+    TextContent = JoinLines(Lines);
     
     // Scroll to cursor
     ScrollToCursor();
@@ -316,15 +300,8 @@ void SMultiLineEditableText::DeleteRange(const FTextLocation& Start, const FText
     FTextLineInfo NewLine(BeforeText + AfterText);
     Lines.insert(Lines.begin() + A.LineIndex, NewLine);
     
-    // Update LinesStrings
-    LinesStrings.resize(Lines.size());
-    for (size_t i = 0; i < Lines.size(); ++i)
-    {
-        LinesStrings[i] = Lines[i].Text;
-    }
-    
     // Update text content
-    TextContent = JoinLines(LinesStrings);
+    TextContent = JoinLines(Lines);
 }
 
 void SMultiLineEditableText::MoveCursorHome(bool bCtrl)
@@ -564,13 +541,13 @@ void SMultiLineEditableText::ClampScrollOffset()
 float SMultiLineEditableText::GetMaxScrollOffset() const
 {
     float ContentHeight = GetContentHeight();
-    float ViewHeight = GetCachedGeometry().LocalSize.y;
+    float ViewHeight = m_CachedGeometry.LocalSize.y;
     return (ContentHeight > ViewHeight) ? (ContentHeight - ViewHeight) : 0.0f;
 }
 
 Vector2 SMultiLineEditableText::ComputeDesiredSize() const
 {
-    float Width = GetCachedGeometry().LocalSize.x > 0.0f ? GetCachedGeometry().LocalSize.x : Options.MinWidth;
+    float Width = m_CachedGeometry.LocalSize.x > 0.0f ? m_CachedGeometry.LocalSize.x : Options.MinWidth;
     float Height = GetContentHeight();
     
     return Vector2(Width, Height);
@@ -596,8 +573,8 @@ void SMultiLineEditableText::OnPaint(const FPaintContext& ctx, const FGeometry& 
 void SMultiLineEditableText::DrawBackground(const FPaintContext& ctx, const FGeometry& geom) const
 {
     const UIRect Rect = geom.ToRect();
-    ctx.Renderer->drawQuad(Rect, Options.BackgroundColor);
-    ctx.Renderer->drawRect(Rect, m_HasFocus ? Options.FocusBorderColor : Options.BorderColor, 1.0f);
+    ctx.Renderer->DrawQuad(Rect, Options.BackgroundColor);
+    ctx.Renderer->DrawRect(Rect, m_HasFocus ? Options.FocusBorderColor : Options.BorderColor, 1.0f);
 }
 
 void SMultiLineEditableText::DrawSelection(const FPaintContext& ctx, const FGeometry& geom) const
@@ -649,7 +626,7 @@ void SMultiLineEditableText::DrawSelection(const FPaintContext& ctx, const FGeom
         if (SelTop < Rect.y) SelTop = Rect.y;
         if (SelBottom > Rect.y + Rect.h) SelBottom = Rect.y + Rect.h;
         
-        ctx.Renderer->drawQuad(UIRect(SelLeft, SelTop, SelRight - SelLeft, SelBottom - SelTop), Options.SelectionColor);
+        ctx.Renderer->DrawQuad(UIRect(SelLeft, SelTop, SelRight - SelLeft, SelBottom - SelTop), Options.SelectionColor);
     }
 }
 
@@ -673,8 +650,8 @@ void SMultiLineEditableText::DrawText(const FPaintContext& ctx, const FGeometry&
             Rect.h - Options.Padding.GetTotalVertical()
         );
         
-        ctx.Renderer->drawText(TextRect, HintText, Options.FontSize, Options.HintColor, 
-                               TextAnchor::TopLeft, TextWrapMode::NoWrap, nullptr);
+        ctx.Renderer->DrawText(TextRect, HintText, Options.FontSize, Options.HintColor, 
+                               TextAnchor::UpperLeft, TextWrapMode::NoWrap, nullptr);
         return;
     }
     
@@ -711,8 +688,8 @@ void SMultiLineEditableText::DrawText(const FPaintContext& ctx, const FGeometry&
             DisplayText = std::string(LineText.length(), '*');
         }
         
-        ctx.Renderer->drawText(TextRect, DisplayText, Options.FontSize, Options.TextColor,
-                               TextAnchor::TopLeft, TextWrapMode::NoWrap, nullptr);
+        ctx.Renderer->DrawText(TextRect, DisplayText, Options.FontSize, Options.TextColor,
+                               TextAnchor::UpperLeft, TextWrapMode::NoWrap, nullptr);
     }
 }
 
@@ -732,11 +709,11 @@ void SMultiLineEditableText::DrawCursor(const FPaintContext& ctx, const FGeometr
     
     const UIRect Rect = geom.ToRect();
     float CursorX = Rect.x + Options.Padding.Left;
-    float CursorY = Rect.y + GetLineTopY(CursorLocation.LineIndex) + Options.Padding.Top;
+    float CursorY = Rect.y + GetLineTopY(CursorLocation.LineIndex) - ScrollOffsetY + Options.Padding.Top;
     float CursorHeight = GetLineHeight(CursorLocation.LineIndex) - Options.Padding.GetTotalVertical();
     
     // Draw vertical cursor line
-    ctx.Renderer->drawRect(UIRect(CursorX, CursorY, 2.0f, CursorHeight), Options.CursorColor, 1.0f);
+    ctx.Renderer->DrawRect(UIRect(CursorX, CursorY, 2.0f, CursorHeight), Options.CursorColor, 1.0f);
 }
 
 void SMultiLineEditableText::DrawScrollBar(const FPaintContext& ctx, const FGeometry& geom) const
@@ -750,9 +727,9 @@ void SMultiLineEditableText::DrawScrollBar(const FPaintContext& ctx, const FGeom
     
     if (ThumbSize <= 0.0f) return;
     
-    ctx.Renderer->drawQuad(UIRect(Rect.x + Rect.w - Options.ScrollBarWidth,
+    ctx.Renderer->DrawQuad(UIRect(Rect.x + Rect.w - Options.ScrollBarColor.x - Options.ScrollBarColor.z,
                                    Rect.y + ThumbPos,
-                                   Options.ScrollBarWidth,
+                                   Options.ScrollBarColor.x + Options.ScrollBarColor.z,
                                    ThumbSize),
                            Options.ScrollBarColor);
 }
@@ -760,7 +737,7 @@ void SMultiLineEditableText::DrawScrollBar(const FPaintContext& ctx, const FGeom
 float SMultiLineEditableText::GetScrollBarThumbPosition() const
 {
     float ContentHeight = GetContentHeight();
-    float ViewHeight = GetCachedGeometry().LocalSize.y;
+    float ViewHeight = m_CachedGeometry.LocalSize.y;
     
     if (ContentHeight <= ViewHeight) return 0.0f;
     
@@ -772,7 +749,7 @@ float SMultiLineEditableText::GetScrollBarThumbPosition() const
 float SMultiLineEditableText::GetScrollBarThumbSize() const
 {
     float ContentHeight = GetContentHeight();
-    float ViewHeight = GetCachedGeometry().LocalSize.y;
+    float ViewHeight = m_CachedGeometry.LocalSize.y;
     
     if (ContentHeight <= ViewHeight) return 0.0f;
     
@@ -821,14 +798,14 @@ void SMultiLineEditableText::OnMouseMove(const Vector2& pos)
 {
     if (m_DraggingThumb)
     {
-        ApplyThumbDrag(pos.y, GetCachedGeometry().ToRect());
+        ApplyThumbDrag(pos.y, m_CachedGeometry.ToRect());
         return;
     }
     
     // Update cursor position on drag
     if (m_HasFocus)
     {
-        FTextLocation NewLocation = HitTestLocation(pos - GetCachedGeometry().AbsolutePosition);
+        FTextLocation NewLocation = HitTestLocation(pos - m_CachedGeometry.AbsolutePosition);
         
         if (NewLocation != CursorLocation)
         {
@@ -853,12 +830,12 @@ FReply SMultiLineEditableText::OnMouseButtonDown(const Vector2& pos, int button)
     m_HasFocus = true;
     
     const float ContentHeight = GetContentHeight();
-    const UIRect Rect = GetCachedGeometry().ToRect();
+    const UIRect Rect = m_CachedGeometry.ToRect();
     const float ViewHeight = Rect.h;
     
     if (ContentHeight > ViewHeight)
     {
-        const float Band = Options.ScrollBarWidth;
+        const float Band = std::max<float>(Options.ScrollBarColor.x + Options.ScrollBarColor.z, 12.0f);
         if (pos.x >= Rect.x + Rect.w - Band)
         {
             // Click on scrollbar
@@ -881,7 +858,7 @@ FReply SMultiLineEditableText::OnMouseButtonDown(const Vector2& pos, int button)
     }
     
     // Click on text area
-    FTextLocation Location = HitTestLocation(pos - GetCachedGeometry().AbsolutePosition);
+    FTextLocation Location = HitTestLocation(pos - m_CachedGeometry.AbsolutePosition);
     CursorLocation = Location;
     Selection = FTextSelection();
     
@@ -930,7 +907,7 @@ void SMultiLineEditableText::OnKeyChar(unsigned int codepoint)
     if (codepoint < 32) return;  // Other control characters
     
     std::string utf8_char;
-    this->AppendUtf8(utf8_char, codepoint);
+    SMultiLineEditableText::AppendUtf8(utf8_char, codepoint);
     InsertTextAtCursor(utf8_char);
 }
 
@@ -952,15 +929,14 @@ FReply SMultiLineEditableText::OnKeyDown(EKey key)
             else if (CursorLocation.CharIndex > 0)
             {
                 CursorLocation.CharIndex--;
-                DeleteRange(CursorLocation, FTextLocation(CursorLocation.LineIndex, CursorLocation.CharIndex + 1));
+                DeleteRange(CursorLocation, CursorLocation + FTextLocation(0, 1));
             }
             else if (CursorLocation.LineIndex > 0)
             {
                 // Delete newline and join with previous line
                 CursorLocation.LineIndex--;
                 CursorLocation.CharIndex = static_cast<int32_t>(GetLineInfo(CursorLocation.LineIndex).Text.length());
-                FTextLocation EndLoc(CursorLocation.LineIndex + 1, 0);
-                DeleteRange(CursorLocation, EndLoc);
+                DeleteRange(CursorLocation, CursorLocation + FTextLocation(1, 0));
             }
             return FReply::Handled();
             
@@ -971,7 +947,7 @@ FReply SMultiLineEditableText::OnKeyDown(EKey key)
             }
             else
             {
-                DeleteRange(CursorLocation, FTextLocation(CursorLocation.LineIndex, CursorLocation.CharIndex + 1));
+                DeleteRange(CursorLocation, CursorLocation + FTextLocation(0, 1));
             }
             return FReply::Handled();
             
@@ -979,12 +955,9 @@ FReply SMultiLineEditableText::OnKeyDown(EKey key)
             InsertTextAtCursor("\n");
             return FReply::Handled();
             
-        case EKey::Space:
-            if (!bCtrl)
-            {
-                InsertTextAtCursor(" ");
-                return FReply::Handled();
-            }
+        case EKey::Tab:
+            InsertTextAtCursor("  ");
+            return FReply::Handled();
             
         case EKey::Left:
             MoveCursorLeft(bShift, false);
@@ -1059,7 +1032,7 @@ ECursorType SMultiLineEditableText::GetCursor() const
     return ECursorType::TextBeam;  // TODO: Return IBeam when focused
 }
 
-void SMultiLineEditableText::AppendUtf8(std::string& s, unsigned int cp) const
+void SMultiLineEditableText::AppendUtf8(std::string& s, unsigned int cp)
 {
     if (cp < 0x80) s.push_back(static_cast<char>(cp));
     else if (cp < 0x800)

@@ -23,7 +23,7 @@ class SlateApplication
 public:
     static SlateApplication& Get();
 
-    // Install the text-measurement backend (forwards to ISlateRenderer::measureText
+    // Install the text-measurement backend (forwards to ISlateRenderer::MeasureText
     // or the editor font atlas). Stored in the process-wide GSlateTextMeasurer.
     void SetTextMeasurer(ISlateTextMeasurer* measurer);
 

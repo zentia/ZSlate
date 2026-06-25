@@ -1,149 +1,141 @@
-#include "ZEngineSlateRenderer.h"
+#include "ZSlate/Backend/ZEngineSlateRenderer.h"
 
 // Now we can include ZEngine headers
-#include "Runtime/UI/Render/UiGpuResources.h"
+#include "Runtime/Core/Math/Vector2.h"
+#include "Runtime/UI/Render/UIGpuResources.h"
 #include "Runtime/UI/Render/UIRenderer.h"
 
 namespace ZSlate
 {
-ZEngineSlateRenderer::ZEngineSlateRenderer(Ui::UiGpuResources* gpu_resources)
-    : m_GpuResources(gpu_resources)
+ZEngineSlateRenderer::ZEngineSlateRenderer(UIGpuResources* gpu_resources, UIRenderer* renderer)
+    : m_GpuResources(gpu_resources), m_Renderer(renderer)
 {
 }
 
-void ZEngineSlateRenderer::drawQuad(const UIRect& rect, const UIColor& color)
+void ZEngineSlateRenderer::DrawQuad(const ZSlate::UIRect& rect, const UIColor& color)
 {
-    if (!m_GpuResources || !m_GpuResources->m_Renderer)
+    if (!m_Renderer)
         return;
 
-    Ui::UiRect ui_rect(rect.x, rect.y, rect.width, rect.height);
-    m_GpuResources->m_Renderer->drawQuad(ui_rect, color);
+    ::ZSlate::UIRect ui_rect(rect.x, rect.y, rect.w, rect.h);
+    m_Renderer->DrawQuad(ui_rect, color);
 }
 
-void ZEngineSlateRenderer::drawRect(const UIRect& rect, const UIColor& color, float thickness)
+void ZEngineSlateRenderer::DrawRect(const ZSlate::UIRect& rect, const UIColor& color, float thickness)
 {
-    if (!m_GpuResources || !m_GpuResources->m_Renderer)
+    if (!m_Renderer)
         return;
 
-    Ui::UiRect ui_rect(rect.x, rect.y, rect.width, rect.height);
-    m_GpuResources->m_Renderer->drawRect(ui_rect, color, thickness);
+    ::ZSlate::UIRect ui_rect(rect.x, rect.y, rect.w, rect.h);
+    m_Renderer->DrawRect(ui_rect, color, thickness);
 }
 
-void ZEngineSlateRenderer::drawConvexPoly(const Vector2* points, int count, const UIColor& color)
+void ZEngineSlateRenderer::DrawConvexPoly(const Vector2* points, int count, const UIColor& color)
 {
-    if (!m_GpuResources || !m_GpuResources->m_Renderer || count < 3)
+    if (!m_Renderer || count < 3)
         return;
 
     // Convert ZSlate Vector2 to ZEngine Vector2
-    std::vector<Ui::Vector2> ui_points(count);
+    std::vector<::Vector2> ui_points(count);
     for (int i = 0; i < count; ++i)
     {
-        ui_points[i] = Ui::Vector2(points[i].x, points[i].y);
+        ui_points[i] = ::Vector2(points[i].x, points[i].y);
     }
-    m_GpuResources->m_Renderer->drawConvexPoly(ui_points, color);
+    m_Renderer->DrawConvexPoly(ui_points.data(), count, color);
 }
 
-void ZEngineSlateRenderer::drawRoundedRect(const UIRect& rect, float radius, const UIColor& color)
+void ZEngineSlateRenderer::DrawRoundedRect(const ZSlate::UIRect& rect, float radius, const UIColor& color)
 {
-    if (!m_GpuResources || !m_GpuResources->m_Renderer)
+    (void)rect; (void)radius; (void)color;
+}
+
+void ZEngineSlateRenderer::DrawTexturedQuad(const ZSlate::UIRect& rect, void* texture_handle, const UIColor& tint)
+{
+    if (!m_Renderer)
         return;
 
-    Ui::UiRect ui_rect(rect.x, rect.y, rect.width, rect.height);
-    m_GpuResources->m_Renderer->drawRoundedRect(ui_rect, radius, color);
+    ::ZSlate::UIRect ui_rect(rect.x, rect.y, rect.w, rect.h);
+    m_Renderer->DrawTexturedQuad(ui_rect, texture_handle, tint);
 }
 
-void ZEngineSlateRenderer::drawTexturedQuad(const UIRect& rect, void* texture_handle, const UIColor& tint)
+void ZEngineSlateRenderer::DrawBox(const ZSlate::UIRect& rect, const FMargin& margin, void* texture_handle, const UIColor& tint)
 {
-    if (!m_GpuResources || !m_GpuResources->m_Renderer)
+    if (!m_Renderer)
         return;
 
-    Ui::UiRect ui_rect(rect.x, rect.y, rect.width, rect.height);
-    m_GpuResources->m_Renderer->drawTexturedQuad(ui_rect, static_cast<uint32_t>(reinterpret_cast<uintptr_t>(texture_handle)), tint);
+    ::ZSlate::UIRect ui_rect(rect.x, rect.y, rect.w, rect.h);
+    ::FMargin ui_margin(margin.Left, margin.Top, margin.Right, margin.Bottom);
+    m_Renderer->DrawTexturedQuad(ui_rect, texture_handle, tint, ::Vector2(0.0f, 0.0f), ::Vector2(1.0f, 1.0f));
 }
 
-void ZEngineSlateRenderer::drawBox(const UIRect& rect, const FMargin& margin, void* texture_handle, const UIColor& tint)
+void ZEngineSlateRenderer::DrawBorder(const ZSlate::UIRect& rect, const FMargin& margin, void* texture_handle, const UIColor& tint)
 {
-    if (!m_GpuResources || !m_GpuResources->m_Renderer)
+    if (!m_Renderer)
         return;
 
-    Ui::UiRect ui_rect(rect.x, rect.y, rect.width, rect.height);
-    Ui::FMargin ui_margin(margin.Left, margin.Top, margin.Right, margin.Bottom);
-    m_GpuResources->m_Renderer->drawBox(ui_rect, ui_margin, static_cast<uint32_t>(reinterpret_cast<uintptr_t>(texture_handle)), tint);
+    ::ZSlate::UIRect ui_rect(rect.x, rect.y, rect.w, rect.h);
+    m_Renderer->DrawRect(ui_rect, tint, 1.0f);
 }
 
-void ZEngineSlateRenderer::drawBorder(const UIRect& rect, const FMargin& margin, void* texture_handle, const UIColor& tint)
+void ZEngineSlateRenderer::DrawText(const ZSlate::UIRect& rect, const std::string& text, float font_size,
+                                 const UIColor& color, TextAnchor alignment, TextWrapMode wrap,
+                                 void* font_handle)
 {
-    if (!m_GpuResources || !m_GpuResources->m_Renderer)
+    if (!m_Renderer)
         return;
 
-    Ui::UiRect ui_rect(rect.x, rect.y, rect.width, rect.height);
-    Ui::FMargin ui_margin(margin.Left, margin.Top, margin.Right, margin.Bottom);
-    m_GpuResources->m_Renderer->drawBorder(ui_rect, ui_margin, static_cast<uint32_t>(reinterpret_cast<uintptr_t>(texture_handle)), tint);
+    ::ZSlate::UIRect ui_rect(rect.x, rect.y, rect.w, rect.h);
+    m_Renderer->DrawText(ui_rect, text, font_size, color, alignment, wrap,
+                         static_cast<Font*>(font_handle));
 }
 
-void ZEngineSlateRenderer::drawText(const UIRect& rect, const std::string& text, float font_size, const UIColor& color,
-                                    TextAnchor alignment, TextWrapMode wrap, void* font_handle)
+void ZEngineSlateRenderer::DrawText(const std::string& text, const Vector2& pos, float font_size, const UIColor& color)
 {
-    if (!m_GpuResources || !m_GpuResources->m_Renderer)
+    if (!m_Renderer)
         return;
 
-    Ui::UiRect ui_rect(rect.x, rect.y, rect.width, rect.height);
-    Ui::TextAnchor ui_align = static_cast<Ui::TextAnchor>(static_cast<int>(alignment));
-    Ui::TextWrapMode ui_wrap = static_cast<Ui::TextWrapMode>(static_cast<int>(wrap));
-
-    // Convert font_handle back to ZEngine's font system handle if needed
-    uint32_t font_id = font_handle ? static_cast<uint32_t>(reinterpret_cast<uintptr_t>(font_handle)) : 0;
-
-    m_GpuResources->m_Renderer->drawText(ui_rect, text, font_size, color, ui_align, ui_wrap, font_id);
+    ::ZSlate::UIRect ui_rect(pos.x, pos.y, 100.0f, font_size);
+    m_Renderer->DrawText(ui_rect, text, font_size, color);
 }
 
-void ZEngineSlateRenderer::drawText(const std::string& text, const Vector2& pos, float font_size, const UIColor& color)
+Vector2 ZEngineSlateRenderer::MeasureText(const std::string& text, float font_size) const
 {
-    // Convert to rect-based call for simplicity
-    drawText(UIRect(pos.x, pos.y, 0, 0), text, font_size, color, TextAnchor::MiddleLeft);
+    if (!m_Renderer)
+        return Vector2(0.0f, font_size);
+
+    ::Vector2 result = m_Renderer->MeasureText(text, font_size, TextWrapMode::NoWrap, 0.0f, nullptr);
+    return Vector2(result.x, result.y);
 }
 
-Vector2 ZEngineSlateRenderer::measureText(const std::string& text, float font_size) const
+void ZEngineSlateRenderer::PushClipRect(const ZSlate::UIRect& rect)
 {
-    if (!m_GpuResources || !m_GpuResources->m_Renderer)
-        return Vector2(0, font_size);
-
-    return m_GpuResources->m_Renderer->measureText(text, font_size);
+    if (m_Renderer)
+    {
+        ::ZSlate::UIRect ui_rect(rect.x, rect.y, rect.w, rect.h);
+        m_Renderer->PushClipRect(ui_rect);
+    }
 }
 
-void ZEngineSlateRenderer::pushClipRect(const UIRect& rect)
+void ZEngineSlateRenderer::PopClipRect()
 {
-    if (!m_GpuResources || !m_GpuResources->m_Renderer)
-        return;
-
-    Ui::UiRect ui_rect(rect.x, rect.y, rect.width, rect.height);
-    m_GpuResources->m_Renderer->pushClipRect(ui_rect);
+    if (m_Renderer)
+        m_Renderer->PopClipRect();
 }
 
-void ZEngineSlateRenderer::popClipRect()
+void ZEngineSlateRenderer::BeginFrame()
 {
-    if (!m_GpuResources || !m_GpuResources->m_Renderer)
-        return;
-
-    m_GpuResources->m_Renderer->popClipRect();
+    if (m_Renderer)
+        m_Renderer->BeginFrame();
 }
 
-void ZEngineSlateRenderer::beginFrame()
+void ZEngineSlateRenderer::EndFrame()
 {
-    if (m_GpuResources)
-        m_GpuResources->beginFrame();
+    if (m_Renderer)
+        m_Renderer->EndFrame();
 }
 
-void ZEngineSlateRenderer::endFrame()
+void ZEngineSlateRenderer::Flush()
 {
-    if (m_GpuResources)
-        m_GpuResources->endFrame();
+    // No-op
 }
-
-void ZEngineSlateRenderer::flush()
-{
-    if (m_GpuResources)
-        m_GpuResources->flush();
-}
-
 }  // namespace ZSlate

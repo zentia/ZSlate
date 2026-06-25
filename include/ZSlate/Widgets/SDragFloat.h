@@ -41,11 +41,11 @@ public:
         if (ctx.Renderer == nullptr)
             return;
         const UIRect rect = geom.ToRect();
-        ctx.Renderer->drawQuad(rect, (m_Hovered || m_Dragging) ? HoverColor : BackgroundColor);
+        ctx.Renderer->DrawQuad(rect, (m_Hovered || m_Dragging) ? HoverColor : BackgroundColor);
 
         char buf[48];
         std::snprintf(buf, sizeof(buf), Format.c_str(), Value);
-        ctx.Renderer->drawText(rect, buf, FontSize, TextColor, TextAnchor::MiddleCenter, TextWrapMode::NoWrap);
+        ctx.Renderer->DrawText(rect, buf, FontSize, TextColor, TextAnchor::MiddleCenter, TextWrapMode::NoWrap);
     }
 
     void OnMouseEnter() override { m_Hovered = true; }

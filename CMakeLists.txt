@@ -8,9 +8,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 option(ZSLATE_BUILD_TESTS "Build tests" OFF)
 option(ZSLATE_BUILD_EXAMPLES "Build examples" OFF)
 
-# Find dependencies
-find_package(eastl REQUIRED)
-
 # Source files
 file(GLOB_RECURSE ZSLATE_HEADERS include/*.h)
 file(GLOB_RECURSE ZSLATE_SOURCES src/*.cpp)
@@ -23,11 +20,7 @@ add_library(ZSlate STATIC
 
 target_include_directories(ZSlate PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
-)
-
-# Link dependencies
-target_link_libraries(ZSlate PUBLIC
-    ${EASTL_LIBRARIES}
+    ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty
 )
 
 # Compile options
