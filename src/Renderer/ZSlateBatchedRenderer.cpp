@@ -201,9 +201,20 @@ void ZSlateBatchedRenderer::DrawQuad(const UIRect& rect, const UIColor& color)
 void ZSlateBatchedRenderer::DrawRect(const UIRect& rect, const UIColor& color, float thickness)
 {
     if (!m_Active || thickness <= 0) return;
-    // Simplified: draw as filled quad (full outline tessellation omitted)
-    (void)thickness;
-    DrawQuad(rect, color);
+
+    // 4 thin quads forming a hollow border (top / bottom / left / right edges)
+    float t = thickness;
+    float x0 = rect.x, y0 = rect.y;
+    float x1 = rect.Right(), y1 = rect.Bottom();
+
+    // Top edge
+    AppendTexturedQuad(UIRect(x0, y0, x1 - x0, t), color, nullptr);
+    // Bottom edge
+    AppendTexturedQuad(UIRect(x0, y1 - t, x1 - x0, t), color, nullptr);
+    // Left edge (inset from top/bottom)
+    AppendTexturedQuad(UIRect(x0, y0 + t, t, y1 - y0 - 2 * t), color, nullptr);
+    // Right edge
+    AppendTexturedQuad(UIRect(x1 - t, y0 + t, t, y1 - y0 - 2 * t), color, nullptr);
 }
 
 void ZSlateBatchedRenderer::DrawConvexPoly(const Vector2* points, int count, const UIColor& color)
