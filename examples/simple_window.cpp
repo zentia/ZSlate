@@ -88,30 +88,6 @@ struct MockRenderer : public ZSlate::ISlateRenderer
 };
 
 // ============================================================================
-// Mock Font Service
-// ============================================================================
-
-struct MockFontService : public ZSlate::ISlateFontService
-{
-    void* loadFont(const std::string& font_path, float size) override
-    {
-        printf("loadFont: %s size=%.1f\n", font_path.c_str(), size);
-        return nullptr;
-    }
-
-    void unloadFont(void* handle) override
-    {
-        printf("unloadFont: %p\n", handle);
-    }
-
-    ZSlate::Vector2 MeasureText(void* font_handle, const std::string& text) const override
-    {
-        return ZSlate::Vector2(text.size() * 10.0f, 14.0f);
-    }
-
-    void* getDefaultFont() const override { return nullptr; }
-};
-
 // ============================================================================
 // Mock Platform
 // ============================================================================
@@ -119,10 +95,8 @@ struct MockFontService : public ZSlate::ISlateFontService
 struct MockPlatform : public ZSlate::ISlatePlatform
 {
     MockRenderer Renderer;
-    MockFontService FontService;
 
     ZSlate::ISlateRenderer* getRenderer() override { return &Renderer; }
-    ZSlate::ISlateFontService* getFontService() override { return &FontService; }
     ZSlate::Vector2 getMousePosition() const override { return ZSlate::Vector2(100.0f, 100.0f); }
     bool isMouseButtonDown(int button) const override { return false; }
     bool isKeyDown(int key) const override { return false; }

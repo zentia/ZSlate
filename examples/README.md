@@ -90,7 +90,6 @@ struct ISlateRenderer
 struct ISlatePlatform
 {
     virtual ISlateRenderer* getRenderer() = 0;
-    virtual ISlateFontService* getFontService() = 0;
     virtual Vector2 getMousePosition() const = 0;
     virtual bool isMouseButtonDown(int button) const = 0;
     virtual bool isKeyDown(int key) const = 0;

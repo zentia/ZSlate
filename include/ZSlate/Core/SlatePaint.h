@@ -73,25 +73,6 @@ public:
 };
 
 // ============================================================================
-// ISlateFontService - Font atlas management
-// ============================================================================
-// Host provides font loading and text measurement.
-struct ISlateFontService
-{
-    virtual ~ISlateFontService() = default;
-
-    // Load a font by name. Returns handle for text drawing.
-    virtual void* LoadFont(const std::string& font_path, float size) = 0;
-    virtual void UnloadFont(void* handle) = 0;
-
-    // Measure text using the given font handle.
-    virtual Vector2 MeasureText(void* font_handle, const std::string& text) const = 0;
-
-    // Get default font handle (set by host).
-    virtual void* GetDefaultFont() const = 0;
-};
-
-// ============================================================================
 // ISlatePlatform - All platform abstractions in one place
 // ============================================================================
 struct ISlatePlatform
@@ -100,9 +81,6 @@ struct ISlatePlatform
 
     // Renderer
     virtual ISlateRenderer* GetRenderer() = 0;
-
-    // Font service
-    virtual ISlateFontService* GetFontService() = 0;
 
     // Input (host pumps these each frame)
     virtual Vector2 GetMousePosition() const = 0;

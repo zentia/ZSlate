@@ -33,27 +33,18 @@
 #endif
 
 // ============================================================================
-struct MockFontService : public ZSlate::ISlateFontService
-{
-    void* LoadFont(const std::string&, float) override { return nullptr; }
-    void UnloadFont(void*) override {}
-    ZSlate::Vector2 MeasureText(void*, const std::string& t) const override
-    { return ZSlate::Vector2((float)t.size() * 8.0f, 14.0f); }
-    void* GetDefaultFont() const override { return nullptr; }
-};
+
 
 // ============================================================================
 class DemoPlatform : public ZSlate::ISlatePlatform
 {
 public:
     ZSlate::ZSlateBatchedRenderer Renderer;
-    MockFontService               FontService;
     bool          m_MouseDown[3] {};
     ZSlate::Vector2 m_MousePos {0, 0};
     ZSlate::Vector2 m_WinSize  {800, 600};
 
     ZSlate::ISlateRenderer*    GetRenderer()    override { return &Renderer; }
-    ZSlate::ISlateFontService* GetFontService() override { return &FontService; }
     ZSlate::Vector2 GetMousePosition()   const override { return m_MousePos; }
     bool IsMouseButtonDown(int b) const override { return b<3 ? m_MouseDown[b] : false; }
     bool IsKeyDown(int)           const override { return false; }
