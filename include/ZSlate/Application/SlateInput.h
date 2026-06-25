@@ -32,6 +32,10 @@ public:
 
     SWidget* GetKeyboardFocusedWidget() const { return m_Focused; }
 
+    // Set keyboard focus to a specific widget. The widget must have
+    // SupportsKeyboardFocus() == true (checked by the setter).
+    void SetKeyboardFocusWidget(SWidget* widget);
+
     // `right_down` lets widgets handle right-clicks (context menus). Optional so
     // existing call sites that only care about the left button compile unchanged.
     void ProcessMouse(const std::shared_ptr<SWidget>& root,

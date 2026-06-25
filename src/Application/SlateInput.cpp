@@ -84,6 +84,13 @@ void SlateInputRouter::SetFocus(SWidget* widget)
         m_Focused->OnFocusReceived();
 }
 
+void SlateInputRouter::SetKeyboardFocusWidget(SWidget* widget)
+{
+    if (widget && !widget->SupportsKeyboardFocus())
+        return;  // silently ignore widgets that don't want keyboard focus
+    SetFocus(widget);
+}
+
 void SlateInputRouter::EndDrag()
 {
     if (m_DragOverTarget != nullptr)
