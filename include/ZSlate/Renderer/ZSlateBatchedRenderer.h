@@ -86,7 +86,9 @@ public:
 
     // Magic texture ID for font atlas glyphs (0x1).  The GPU backend should
     // bind the atlas texture when it sees this ID in a draw command.
-    static constexpr void* kFontAtlasTextureId = reinterpret_cast<void*>(0x1);
+    // NOTE: reinterpret_cast is not allowed in a constant expression, so this
+    // cannot be constexpr (clang rejects it even though MSVC accepts it).
+    static inline void* const kFontAtlasTextureId = reinterpret_cast<void*>(0x1);
 
     // --- ISlateRenderer interface (PascalCase) -------------------------------
     void DrawQuad(const UIRect& rect, const UIColor& color) override;

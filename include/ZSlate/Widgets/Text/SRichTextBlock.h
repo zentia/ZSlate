@@ -178,7 +178,12 @@ public:
         std::vector<std::shared_ptr<ITextDecorator>> Decorators;
     };
 
-    explicit SRichTextBlock(const FRichTextOptions& InOptions = FRichTextOptions{})
+    SRichTextBlock()
+        : SRichTextBlock(FRichTextOptions{})
+    {
+    }
+
+    explicit SRichTextBlock(const FRichTextOptions& InOptions)
         : Options(InOptions)
         , m_Parser()
     {

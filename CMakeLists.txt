@@ -12,11 +12,30 @@ option(ZSLATE_BUILD_EXAMPLES "Build examples" OFF)
 file(GLOB_RECURSE ZSLATE_HEADERS include/*.h)
 file(GLOB_RECURSE ZSLATE_SOURCES src/*.cpp)
 
+# The D3D11 renderer backend is Windows-only (uses HWND / ID3D11* / DXGI types).
+# Exclude it on non-Windows platforms so clang (Android/iOS) doesn't try to compile it.
+if(NOT WIN32)
+    list(FILTER ZSLATE_HEADERS EXCLUDE REGEX "Platform[/\\]D3D11[/\\]")
+    list(FILTER ZSLATE_SOURCES EXCLUDE REGEX "Platform[/\\]D3D11[/\\]")
+endif()
+
 # Create static library
 add_library(ZSlate STATIC
     ${ZSLATE_HEADERS}
     ${ZSLATE_SOURCES}
 )
+
+# When ZSlate is built as a subdirectory of ZEngine, the parent project sets
+# CMAKE_ARCHIVE_OUTPUT_DIRECTORY_<CONFIG> to a single unified directory for
+# every config (see ZEngine/CMakeLists.txt "ZEngine unified output directory").
+# Without a per-config override, Debug and Release ZSlate.lib overwrite each
+# other, and a stale .lib from the other config is linked into consumers ->
+# LNK2038 "_ITERATOR_DEBUG_LEVEL"/"RuntimeLibrary" mismatch. Mirror what every
+# other ZEngine static library does via z_set_config_archive_dirs. Guarded so
+# standalone ZSlate builds (where the helper is undefined) are unaffected.
+if(COMMAND z_set_config_archive_dirs)
+    z_set_config_archive_dirs(ZSlate "${CMAKE_CURRENT_BINARY_DIR}")
+endif()
 
 target_include_directories(ZSlate PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
