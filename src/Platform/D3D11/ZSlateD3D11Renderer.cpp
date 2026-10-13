@@ -65,11 +65,25 @@ bool ZSlateD3D11Renderer::Init()
     sd.SampleDesc.Count = 1;
     sd.Windowed = TRUE;
 
-    D3D_FEATURE_LEVEL fl;
-    if (FAILED(D3D11CreateDeviceAndSwapChain(
-            nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, D3D11_CREATE_DEVICE_SINGLETHREADED,
-            nullptr, 0, D3D11_SDK_VERSION, &sd, &m_SwapChain, &m_Device, &fl, &m_Context)))
-    { std::fprintf(stderr, "[ZSlateD3D11] CreateDeviceAndSwapChain failed\n"); return false; }
+    D3D_FEATURE_LEVEL fl{};
+    const D3D_FEATURE_LEVEL required[] = {D3D_FEATURE_LEVEL_11_0};
+    auto create = [&](D3D_DRIVER_TYPE driver) {
+        return D3D11CreateDeviceAndSwapChain(
+            nullptr, driver, nullptr, D3D11_CREATE_DEVICE_SINGLETHREADED,
+            required, 1, D3D11_SDK_VERSION, &sd, &m_SwapChain, &m_Device, &fl, &m_Context);
+    };
+    HRESULT deviceResult = create(D3D_DRIVER_TYPE_HARDWARE);
+    if (FAILED(deviceResult))
+    {
+        Shutdown();
+        deviceResult = create(D3D_DRIVER_TYPE_WARP);
+    }
+    if (FAILED(deviceResult))
+    {
+        Shutdown();
+        std::fprintf(stderr, "[ZSlateD3D11] Hardware and WARP initialization failed: 0x%08lx\n", deviceResult);
+        return false;
+    }
 
     ID3D11Texture2D* bb = nullptr;
     m_SwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**)&bb);

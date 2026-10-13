@@ -21,6 +21,8 @@ public:
     // Public members accessed by UMG UCheckBox.h
     bool Checked {false};
     float BoxSize {18.0f};
+    float FontSize {13.0f};
+    Vector2 Size {200.0f, 24.0f};
     std::function<void(bool)> OnCheckStateChanged;
     std::string Label;
 
@@ -28,7 +30,7 @@ public:
     bool IsChecked() const { return Checked; }
     void SetLabel(const std::string& l) { Label = l; }
 
-    Vector2 ComputeDesiredSize() const override { return Vector2(200.0f, 24.0f); }
+    Vector2 ComputeDesiredSize() const override { return Size; }
     void ArrangeChildren(const FGeometry& geom, std::vector<FArrangedWidget>& out) const override { (void)geom; (void)out; }
 
     void OnPaint(const FPaintContext& ctx, const FGeometry& geom) const override
@@ -63,7 +65,7 @@ public:
         if (!Label.empty())
         {
             UIRect lr(rect.x + sz + 10.0f, rect.y, rect.w - sz - 14.0f, rect.h);
-            ctx.Renderer->DrawTextLabel(lr, Label, 13.0f, UIColor(0.88f, 0.89f, 0.92f, 1.0f),
+            ctx.Renderer->DrawTextLabel(lr, Label, FontSize, UIColor(0.88f, 0.89f, 0.92f, 1.0f),
                                    TextAnchor::MiddleLeft, TextWrapMode::NoWrap);
         }
     }

@@ -6,6 +6,7 @@
 #include "ZSlate/Widgets/SPanel.h"
 #include "ZSlate/Widgets/Layout/SScrollBox.h"
 
+#include <algorithm>
 #include <functional>
 #include <string>
 #include <vector>
@@ -32,12 +33,20 @@ public:
     float ItemHeight {22.0f};
     float FontSize {13.0f};
     float MaxDropdownHeight {200.0f};
+    Vector2 Size {160.0f, 26.0f};
+    // Overlay hosts call PaintPopup after the root, and ProcessPopupMouse before routing to the root.
+    bool ExternalPopup {false};
 
     // Callbacks
     std::function<std::string(const T&)> OnGetLabel;
     std::function<void(const T&, int32_t)> OnSelectionChanged;
 
-    Vector2 ComputeDesiredSize() const override { return Vector2(160.0f, 26.0f); }
+    Vector2 ComputeDesiredSize() const override { return Size; }
+    bool IsOpen() const { return m_Open; }
+    void ClosePopup() { m_Open = false; m_PressedItem = -1; }
+    bool SupportsKeyboardFocus() const override { return true; }
+    void OnFocusLost() override { ClosePopup(); }
+    void OnMouseCaptureLost() override { ClosePopup(); }
 
     void OnPaint(const FPaintContext& ctx, const FGeometry& geom) const override
     {
@@ -70,87 +79,161 @@ public:
             label, FontSize, UIColor(0.88f, 0.89f, 0.92f, 1.0f),
             TextAnchor::MiddleLeft, TextWrapMode::NoWrap);
 
-        // Dropdown
-        if (m_Open)
-            PaintDropdown(ctx, r);
+        if (m_Open && !ExternalPopup)
+        {
+            UpdatePopupRect(UIRect(r.x, r.y, r.w, r.h + MaxDropdownHeight));
+            PaintDropdown(ctx);
+        }
     }
 
     // ---- Input ---------------------------------------------------------------
 
     void OnMouseEnter() override { m_Hovered = true; }
-    void OnMouseLeave() override
-    {
-        m_Hovered = false;
-        if (m_Open) m_Open = false;
-    }
+    void OnMouseLeave() override { m_Hovered = false; }
 
     FReply OnMouseButtonDown(const Vector2& pos, int btn) override
     {
         if (btn != 0) return FReply::Unhandled();
-
-        const UIRect r = GetCachedGeometry().ToRect();
-
-        if (m_Open)
-        {
-            // Check dropdown items
-            float dropY = r.Bottom();
-            int32_t numItems = static_cast<int32_t>(Options.size());
-            float dropH = std::min(ItemHeight * numItems, MaxDropdownHeight);
-
-            if (pos.x >= r.x && pos.x <= r.Right() && pos.y >= dropY && pos.y <= dropY + dropH)
-            {
-                int32_t idx = static_cast<int32_t>((pos.y - dropY) / ItemHeight);
-                if (idx >= 0 && idx < numItems)
-                {
-                    SelectedIndex = idx;
-                    SelectedItem = Options[idx];
-                    if (OnSelectionChanged) OnSelectionChanged(SelectedItem, idx);
-                }
-            }
-            m_Open = false;
-            return FReply::Handled();
-        }
-
-        // Toggle open
-        m_Open = true;
+        if (m_Open) ProcessPopupMouse(pos, true, 0);
+        else OpenPopup(true);
         return FReply::Handled();
     }
 
-private:
-    mutable bool m_Hovered {false};
-    mutable bool m_Open {false};
-
-    void PaintDropdown(const FPaintContext& ctx, const UIRect& mainRect) const
+    FReply OnMouseButtonUp(const Vector2& pos, int btn) override
     {
-        float dropY = mainRect.Bottom();
-        int32_t numItems = static_cast<int32_t>(Options.size());
-        float dropH = std::min(ItemHeight * numItems, MaxDropdownHeight);
+        if (btn != 0) return FReply::Unhandled();
+        ProcessPopupMouse(pos, false, 0);
+        return FReply::Handled();
+    }
 
-        // Dropdown background
-        ctx.Renderer->DrawQuad(
-            UIRect(mainRect.x, dropY, mainRect.w, dropH),
-            UIColor(0.14f, 0.15f, 0.18f, 0.97f));
-        ctx.Renderer->DrawRect(
-            UIRect(mainRect.x, dropY, mainRect.w, dropH),
-            UIColor(0.35f, 0.38f, 0.45f, 1.0f), 1.0f);
-
-        for (int32_t i = 0; i < numItems; ++i)
+    FReply OnKeyDown(EKey key) override
+    {
+        if (Options.empty()) return FReply::Unhandled();
+        if (key == EKey::Escape || key == EKey::Tab)
         {
-            float iy = dropY + static_cast<float>(i) * ItemHeight;
-            UIRect ir(mainRect.x + 1.0f, iy, mainRect.w - 2.0f, ItemHeight);
-
-            // Highlight
-            if (i == SelectedIndex)
-                ctx.Renderer->DrawQuad(ir, UIColor(0.18f, 0.35f, 0.62f, 1.0f));
-
-            std::string label = OnGetLabel ? OnGetLabel(Options[i]) : ("#" + std::to_string(i));
-            ctx.Renderer->DrawTextLabel(
-                UIRect(ir.x + 6.0f, ir.y, ir.w - 12.0f, ir.h),
-                label, FontSize,
-                i == SelectedIndex ? UIColor(1.0f, 1.0f, 1.0f, 1.0f)
-                                   : UIColor(0.85f, 0.88f, 0.94f, 1.0f),
-                TextAnchor::MiddleLeft, TextWrapMode::NoWrap);
+            ClosePopup();
+            return FReply::Handled();
         }
+        if (key != EKey::Enter && key != EKey::Space && key != EKey::Up && key != EKey::Down)
+            return FReply::Unhandled();
+        if (!m_Open) OpenPopup(false);
+        else if (key == EKey::Enter || key == EKey::Space) Commit(m_ActiveItem);
+        else
+        {
+            m_ActiveItem = std::clamp(m_ActiveItem + (key == EKey::Down ? 1 : -1), 0, static_cast<int32_t>(Options.size()) - 1);
+            EnsureActiveVisible();
+        }
+        return FReply::Handled();
+    }
+
+    // Returns true even for a dismissing click: the host must not click through to the root.
+    bool ProcessPopupMouse(const Vector2& pos, bool leftDown, float wheel)
+    {
+        if (!m_Open) return false;
+        const int32_t hit = HitItem(pos);
+        if (hit >= 0) m_ActiveItem = hit;
+        if (wheel != 0 && m_VisibleRows > 0)
+        {
+            m_FirstItem = std::clamp(m_FirstItem + (wheel > 0 ? -1 : 1), 0,
+                std::max(0, static_cast<int32_t>(Options.size()) - m_VisibleRows));
+        }
+        if (leftDown && !m_PopupLeftDown)
+        {
+            m_PressedItem = hit;
+            if (hit < 0) ClosePopup();
+        }
+        else if (!leftDown && m_PopupLeftDown && m_PressedItem >= 0)
+        {
+            if (hit == m_PressedItem) Commit(hit);
+            else m_PressedItem = -1;
+        }
+        m_PopupLeftDown = leftDown;
+        return true;
+    }
+
+    void PaintPopup(ISlateRenderer* renderer, const UIRect& viewport) const
+    {
+        if (!m_Open || !renderer) return;
+        UpdatePopupRect(viewport);
+        FPaintContext context;
+        context.Renderer = renderer;
+        renderer->PushClipRect(viewport);
+        PaintDropdown(context);
+        renderer->PopClipRect();
+    }
+
+private:
+    bool m_Hovered {false};
+    bool m_Open {false};
+    bool m_PopupLeftDown {false};
+    int32_t m_PressedItem {-1};
+    int32_t m_ActiveItem {-1};
+    mutable int32_t m_FirstItem {0};
+    mutable int32_t m_VisibleRows {0};
+    mutable UIRect m_PopupRect;
+
+    void OpenPopup(bool leftDown)
+    {
+        if (Options.empty() || ItemHeight <= 0) return;
+        m_Open = true;
+        m_PopupLeftDown = leftDown;
+        m_PressedItem = -1;
+        m_ActiveItem = std::clamp(SelectedIndex, 0, static_cast<int32_t>(Options.size()) - 1);
+        m_FirstItem = 0;
+    }
+    void Commit(int32_t index)
+    {
+        ClosePopup();
+        if (index < 0 || index >= static_cast<int32_t>(Options.size())) return;
+        const bool changed = SelectedIndex != index;
+        SelectedIndex = index;
+        SelectedItem = Options[index];
+        if (changed && OnSelectionChanged) OnSelectionChanged(SelectedItem, index);
+    }
+    void EnsureActiveVisible() const
+    {
+        if (m_VisibleRows < 1) return;
+        if (m_ActiveItem < m_FirstItem) m_FirstItem = m_ActiveItem;
+        if (m_ActiveItem >= m_FirstItem + m_VisibleRows) m_FirstItem = m_ActiveItem - m_VisibleRows + 1;
+    }
+    void UpdatePopupRect(const UIRect& viewport) const
+    {
+        const UIRect anchor = GetCachedGeometry().ToRect();
+        const float below = std::max(0.0f, viewport.Bottom() - anchor.Bottom());
+        const float above = std::max(0.0f, anchor.y - viewport.y);
+        const float desired = std::min(MaxDropdownHeight, ItemHeight * static_cast<float>(Options.size()));
+        const bool flip = desired > below && above > below;
+        const float available = std::min(desired, flip ? above : below);
+        m_VisibleRows = ItemHeight > 0 ? std::max(0, static_cast<int32_t>(available / ItemHeight)) : 0;
+        const float width = std::min(anchor.w, viewport.w);
+        m_PopupRect = UIRect(std::clamp(anchor.x, viewport.x, viewport.Right() - width),
+            flip ? anchor.y - m_VisibleRows * ItemHeight : anchor.Bottom(), width, m_VisibleRows * ItemHeight);
+        m_FirstItem = std::clamp(m_FirstItem, 0, std::max(0, static_cast<int32_t>(Options.size()) - m_VisibleRows));
+    }
+    int32_t HitItem(const Vector2& pos) const
+    {
+        if (ItemHeight <= 0 || pos.x < m_PopupRect.x || pos.x >= m_PopupRect.Right() ||
+            pos.y < m_PopupRect.y || pos.y >= m_PopupRect.Bottom()) return -1;
+        const int32_t index = m_FirstItem + static_cast<int32_t>((pos.y - m_PopupRect.y) / ItemHeight);
+        return index < static_cast<int32_t>(Options.size()) ? index : -1;
+    }
+    void PaintDropdown(const FPaintContext& ctx) const
+    {
+        if (m_VisibleRows < 1) return;
+        ctx.Renderer->DrawQuad(m_PopupRect, UIColor(0.14f, 0.15f, 0.18f, 1.0f));
+        ctx.Renderer->DrawRect(m_PopupRect, UIColor(0.35f, 0.38f, 0.45f, 1.0f), 1.0f);
+        ctx.Renderer->PushClipRect(m_PopupRect);
+        for (int32_t row = 0; row < m_VisibleRows; ++row)
+        {
+            const int32_t i = m_FirstItem + row;
+            UIRect item(m_PopupRect.x + 1, m_PopupRect.y + row * ItemHeight, m_PopupRect.w - 2, ItemHeight);
+            if (i == m_ActiveItem)
+                ctx.Renderer->DrawQuad(item, UIColor(0.18f, 0.35f, 0.62f, 1.0f));
+            const std::string label = OnGetLabel ? OnGetLabel(Options[i]) : ("#" + std::to_string(i));
+            ctx.Renderer->DrawTextLabel(UIRect(item.x + 6, item.y, item.w - 12, item.h), label, FontSize,
+                UIColor(0.95f, 0.95f, 0.95f, 1.0f), TextAnchor::MiddleLeft, TextWrapMode::NoWrap);
+        }
+        ctx.Renderer->PopClipRect();
     }
 };
 

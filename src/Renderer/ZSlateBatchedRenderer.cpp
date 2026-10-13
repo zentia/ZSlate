@@ -278,9 +278,7 @@ void ZSlateBatchedRenderer::DrawTextLabel(const UIRect& rect, const std::string&
 
         for (const auto& g : m_TextGen->GetGlyphs())
         {
-            UIRect snapped(std::round(g.dest.x), std::round(g.dest.y),
-                           std::ceil(g.dest.x + g.dest.w) - std::round(g.dest.x),
-                           std::ceil(g.dest.y + g.dest.h) - std::round(g.dest.y));
+            UIRect snapped(std::round(g.dest.x), std::round(g.dest.y), g.dest.w, g.dest.h);
             AppendTexturedQuad(snapped, color, kFontAtlasTextureId,
                                g.uv0.x, g.uv0.y, g.uv1.x, g.uv1.y);
         }
@@ -326,7 +324,7 @@ Vector2 ZSlateBatchedRenderer::MeasureText(const std::string& text, float fontSi
 {
     // Use font atlas if available
     if (m_FontAtlas && m_TextGen)
-        return ZSlateTextGenerator::Measure(*m_FontAtlas, text, fontSize,
+        return ZSlateTextGenerator::Measure(*m_FontAtlas, text, std::round(fontSize),
                                              TextWrapMode::NoWrap, 0.0f);
 
     if (m_TextMeasurer)

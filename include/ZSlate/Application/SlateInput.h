@@ -25,6 +25,8 @@ public:
     // Clear all hover/capture/focus state. Call when the tree is rebuilt so we
     // never dereference freed widgets.
     void Reset();
+    // End the current pointer gesture while preserving the focused widget.
+    void ResetPointerState();
 
     // Drop hover-path pointers without clearing keyboard focus or mouse capture.
     // Use when only log-row widgets are destroyed (Console filter rebuild).

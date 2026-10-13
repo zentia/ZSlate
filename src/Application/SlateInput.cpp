@@ -101,9 +101,18 @@ bool SlateInputRouter::HasKeyboardFocus() const
 
 void SlateInputRouter::Reset()
 {
+    ClearKeyboardFocus();
+    ResetPointerState();
+}
+
+void SlateInputRouter::ResetPointerState()
+{
+    for (const auto& weak : m_HoverPath)
+        if (auto widget = weak.lock()) widget->OnMouseLeave();
+    if (auto widget = m_Captured.lock()) widget->OnMouseCaptureLost();
+    if (auto widget = m_RightCaptured.lock()) widget->OnMouseCaptureLost();
     m_HoverPath.clear();
     m_Captured.reset();
-    m_Focused.reset();
     m_PrevLeftDown = false;
     m_PrevRightDown = false;
     m_RightCaptured.reset();
