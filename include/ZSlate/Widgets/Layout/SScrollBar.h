@@ -2,6 +2,8 @@
 
 #include "ZSlate/Widgets/SWidget.h"
 #include "ZSlate/Core/SlateEnums.h"
+#include <algorithm>
+#include <functional>
 
 namespace ZSlate
 {
@@ -27,13 +29,19 @@ public:
 
     // Click step on track (empty space above/below thumb). Default scrolls ~1 page.
     float TrackClickStep {0.1f};
+    float WheelStep {0.1f};
+    float Thickness {12.0f};
+    float MinThumbLength {12.0f};
+    std::function<void(float)> OnUserScrolled;
 
     Vector2 ComputeDesiredSize() const override
     {
         return Orientation == EOrientation::Vertical
-            ? Vector2(12.0f, 100.0f)
-            : Vector2(100.0f, 12.0f);
+            ? Vector2(Thickness, 100.0f)
+            : Vector2(100.0f, Thickness);
     }
+
+    UIRect GetThumbRect() const { return ThumbRect(GetCachedGeometry().ToRect()); }
 
     void OnPaint(const FPaintContext& ctx, const FGeometry& geom) const override
     {
@@ -43,18 +51,8 @@ public:
         // Track background
         ctx.Renderer->DrawQuad(r, UIColor(0.12f, 0.12f, 0.14f, 1.0f));
 
-        // Thumb
-        float thumbFrac = std::max(0.05f, ViewFraction);
-        float trackLen = (Orientation == EOrientation::Vertical) ? r.h : r.w;
-        float thumbLen = std::max(12.0f, trackLen * thumbFrac);
-        float travel = trackLen - thumbLen;
-        float offset = (travel > 0.0f) ? Value * travel : 0.0f;
-
-        UIRect thumbRect;
-        if (Orientation == EOrientation::Vertical)
-            thumbRect = UIRect(r.x, r.y + offset, r.w, thumbLen);
-        else
-            thumbRect = UIRect(r.x + offset, r.y, thumbLen, r.h);
+        if (ViewFraction >= 1.0f) return;
+        const UIRect thumbRect = ThumbRect(r);
 
         UIColor thumbCol = m_Dragging ? UIColor(0.42f, 0.45f, 0.52f, 1.0f)
                          : m_Hovered  ? UIColor(0.35f, 0.38f, 0.45f, 1.0f)
@@ -65,7 +63,7 @@ public:
     // --- Input -----------------------------------------------------------
 
     void OnMouseEnter() override { m_Hovered = true; }
-    void OnMouseLeave() override { m_Hovered = false; m_Dragging = false; }
+    void OnMouseLeave() override { m_Hovered = false; }
 
     FReply OnMouseButtonDown(const Vector2& pos, int btn) override
     {
@@ -73,7 +71,7 @@ public:
 
         const UIRect r = GetCachedGeometry().ToRect();
         float trackLen = (Orientation == EOrientation::Vertical) ? r.h : r.w;
-        float thumbLen = std::max(12.0f, trackLen * std::max(0.05f, ViewFraction));
+        float thumbLen = ThumbLength(trackLen);
         float travel = trackLen - thumbLen;
         if (travel <= 0.0f) return FReply::Unhandled();
 
@@ -89,7 +87,7 @@ public:
         }
 
         float dir = (mouseCoord < thumbStart) ? -1.0f : 1.0f;
-        Value = std::clamp(Value + dir * TrackClickStep, 0.0f, 1.0f);
+        SetUserValue(Value + dir * TrackClickStep);
         return FReply::Handled();
     }
 
@@ -99,14 +97,14 @@ public:
 
         const UIRect r = GetCachedGeometry().ToRect();
         float trackLen = (Orientation == EOrientation::Vertical) ? r.h : r.w;
-        float thumbLen = std::max(12.0f, trackLen * std::max(0.05f, ViewFraction));
+        float thumbLen = ThumbLength(trackLen);
         float travel = trackLen - thumbLen;
         if (travel <= 0.0f) return;
 
         float mouseCoord = (Orientation == EOrientation::Vertical)
             ? pos.y - r.y : pos.x - r.x;
         float newThumbStart = mouseCoord - m_DragOffset;
-        Value = std::clamp(newThumbStart / travel, 0.0f, 1.0f);
+        SetUserValue(newThumbStart / travel);
     }
 
     FReply OnMouseButtonUp(const Vector2&, int btn) override
@@ -120,12 +118,34 @@ public:
 
     FReply OnMouseWheel(const Vector2&, float delta) override
     {
-        float step = 1.0f / std::max(1.0f, 1.0f / std::max(0.01f, TrackClickStep));
-        Value = std::clamp(Value - delta / step, 0.0f, 1.0f);
+        if (ViewFraction >= 1.0f) return FReply::Unhandled();
+        SetUserValue(Value - delta * WheelStep);
         return FReply::Handled();
     }
 
 private:
+    float ThumbLength(float trackLength) const
+    {
+        return std::clamp(trackLength * std::clamp(ViewFraction, 0.0f, 1.0f),
+            std::clamp(MinThumbLength, 0.0f, std::max(0.0f, trackLength)), std::max(0.0f, trackLength));
+    }
+    UIRect ThumbRect(const UIRect& track) const
+    {
+        const float length = Orientation == EOrientation::Vertical ? track.h : track.w;
+        const float thumb = ThumbLength(length);
+        const float offset = std::clamp(Value, 0.0f, 1.0f) * std::max(0.0f, length - thumb);
+        return Orientation == EOrientation::Vertical
+            ? UIRect(track.x, track.y + offset, track.w, thumb)
+            : UIRect(track.x + offset, track.y, thumb, track.h);
+    }
+    void SetUserValue(float value)
+    {
+        const float next = std::clamp(value, 0.0f, 1.0f);
+        if (next == Value) return;
+        Value = next;
+        if (OnUserScrolled) OnUserScrolled(Value);
+    }
+
     mutable bool m_Hovered  {false};
     mutable bool m_Dragging {false};
     float m_DragOffset {0.0f};

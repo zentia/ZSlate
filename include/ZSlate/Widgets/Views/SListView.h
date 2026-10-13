@@ -82,10 +82,19 @@ public:
                 {
                     FGeometry rowGeom = geom.MakeChild(
                         Vector2(0.0f, y - view.y), Vector2(view.w, ItemHeight));
+                    // Desired sizes must be cached before Paint: the widget was
+                    // just built and its children have never been measured, so
+                    // any Auto slot inside the row would arrange at size 0.
+                    rowWidget->CacheDesiredSize();
                     rowWidget->Paint(ctx, rowGeom);
                 }
             }
         }
+
+        // Drop the widgets that scrolled out of view. Without this the
+        // item->widget map grows for every row ever visited, so scrolling a
+        // large list retains a widget per row until the view is destroyed.
+        ReleaseInvisibleWidgets(first, last - 1);
 
         // Sync scroll
         ClampScrollOffset(static_cast<int32_t>(Items.size()), contentH);
@@ -120,13 +129,10 @@ public:
         const UIRect view = GetCachedGeometry().ToRect();
         float hh = GetHeaderHeight();
 
-        // Header click (delegate to header)
+        // Header click (delegate to header; it hit-tests against its own
+        // cached geometry, so no geometry needs to be passed here)
         if (pos.y < view.y + hh && m_HeaderRow)
-        {
-            FGeometry hGeom = FGeometry(Vector2(view.x, view.y),
-                                        Vector2(view.w, hh));
             return m_HeaderRow->OnMouseButtonDown(pos, btn);
-        }
 
         // Row hit test
         int32_t idx = static_cast<int32_t>((pos.y - view.y - hh + m_ScrollOffset) / ItemHeight);
@@ -145,11 +151,12 @@ public:
 
     // ---- Widget recycling ----------------------------------------------------
 
-    // Force regeneration of all visible widgets next paint
+    // Call after mutating Items so cached rows are rebuilt from the new data.
+    // The cache is keyed by index, so stale entries would otherwise keep
+    // rendering the previous contents of those indices.
     void RegenerateAllWidgets()
     {
         m_ItemToWidget.clear();
-        m_WidgetPool.clear();
         RequestRefresh();
     }
 
@@ -157,47 +164,41 @@ private:
     mutable int32_t m_HoveredIndex {-1};
     mutable int32_t m_LastClickedIndex {-1};
 
-    // Widget recycling: map item index → widget, plus a pool of unused widgets
+    // Index -> row widget, holding only the rows currently on screen.
+    //
+    // There is deliberately no free-list of spare widgets here. OnGenerateRow
+    // is the only way to bind a row to its data, and SWidget exposes no "rebind
+    // to this item" hook, so a widget taken from such a pool would keep
+    // rendering the item it was built for - i.e. scrolling would show the wrong
+    // values in the right place, which is worse than reallocating. Rows are
+    // therefore built on demand and dropped once off screen; the cost is bounded
+    // by the number of visible rows, not by the size of Items.
     mutable std::unordered_map<int32_t, std::shared_ptr<SWidget>> m_ItemToWidget;
-    mutable std::vector<std::shared_ptr<SWidget>> m_WidgetPool;
 
     std::shared_ptr<SWidget> GetOrCreateWidget(int32_t idx) const
     {
-        // Return existing widget if still valid
         auto it = m_ItemToWidget.find(idx);
         if (it != m_ItemToWidget.end())
             return it->second;
 
-        // Create new widget
-        std::shared_ptr<SWidget> widget;
-        if (!m_WidgetPool.empty())
-        {
-            widget = m_WidgetPool.back();
-            m_WidgetPool.pop_back();
-        }
+        if (!OnGenerateRow)
+            return nullptr;
 
-        if (!widget && OnGenerateRow)
-            widget = OnGenerateRow(Items[idx], idx);
-
+        std::shared_ptr<SWidget> widget = OnGenerateRow(Items[idx], idx);
         if (widget)
             m_ItemToWidget[idx] = widget;
-
         return widget;
     }
 
+    // Forget every cached row outside [firstVisible, lastVisible].
     void ReleaseInvisibleWidgets(int32_t firstVisible, int32_t lastVisible) const
     {
-        // Move out-of-range widgets back to pool
-        std::vector<int32_t> toRelease;
-        for (const auto& pair : m_ItemToWidget)
+        for (auto it = m_ItemToWidget.begin(); it != m_ItemToWidget.end();)
         {
-            if (pair.first < firstVisible || pair.first > lastVisible)
-                toRelease.push_back(pair.first);
-        }
-        for (int32_t idx : toRelease)
-        {
-            m_WidgetPool.push_back(m_ItemToWidget[idx]);
-            m_ItemToWidget.erase(idx);
+            if (it->first < firstVisible || it->first > lastVisible)
+                it = m_ItemToWidget.erase(it);
+            else
+                ++it;
         }
     }
 };

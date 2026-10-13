@@ -92,27 +92,18 @@ public:
     // Override to clip children to this widget's geometry (scroll views, etc.).
     virtual bool ClipsContent() const { return false; }
 
-    // Helper: align a child of desired size within a region using HAlign/VAlign.
-    static FGeometry AlignChildInRegion(float region_x, float region_y, float region_w, float region_h,
-                                        const Vector2& desired, EHorizontalAlignment h_align, EVerticalAlignment v_align)
-    {
-        float x = region_x;
-        float y = region_y;
-        float w = desired.x;
-        float h = desired.y;
-
-        if (h_align == EHorizontalAlignment::Center)
-            x += (region_w - w) * 0.5f;
-        else if (h_align == EHorizontalAlignment::Right)
-            x += region_w - w;
-
-        if (v_align == EVerticalAlignment::Center)
-            y += (region_h - h) * 0.5f;
-        else if (v_align == EVerticalAlignment::Bottom)
-            y += region_h - h;
-
-        return FGeometry(Vector2(x, y), Vector2(w, h));
-    }
+    // NOTE: the child-alignment helper deliberately lives only as the free
+    // function ZSlate::AlignChildInRegion() in Core/SlateGeometry.h.
+    //
+    // There used to be a static member of the same name here. Because C++ name
+    // lookup stops at the first enclosing scope that has a match, every
+    // unqualified call from a widget (SBoxPanel, SOverlay) resolved to that
+    // member and never reached the namespace-scope version - so the member was
+    // the only implementation in use while the correct one was dead code. The
+    // member ignored EHorizontalAlignment/EVerticalAlignment::Fill and always
+    // returned the child's desired extent, which silently degraded every Fill
+    // slot into Auto (a Fill table stayed at its desired size no matter how big
+    // its parent was). Do not reintroduce a member overload here.
 
     // --- Input --------------------------------------------------------------
     // Only fully-Visible widgets participate in hit-testing.

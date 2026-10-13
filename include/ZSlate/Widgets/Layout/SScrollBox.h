@@ -32,8 +32,20 @@ public:
     // Scroll speed in pixels per wheel notch (legacy compat)
     float ScrollSpeed {40.0f};
 
-    // Attach an external scroll bar (read+write by SScrollBox each frame)
-    void SetScrollBar(std::shared_ptr<SScrollBar> bar) { m_ScrollBar = std::move(bar); }
+    // The host lays out the external bar; this box owns its scroll binding.
+    void SetScrollBar(std::shared_ptr<SScrollBar> bar)
+    {
+        if (m_ScrollBar) m_ScrollBar->OnUserScrolled = {};
+        m_ScrollBar = std::move(bar);
+        if (m_ScrollBar)
+            m_ScrollBar->OnUserScrolled = [self = weak_from_this()](float value) {
+                if (auto widget = self.lock())
+                {
+                    auto box = std::static_pointer_cast<SScrollBox>(widget);
+                    box->ScrollOffset = value * box->m_MaxScroll;
+                }
+            };
+    }
     std::shared_ptr<SScrollBar> GetScrollBar() const { return m_ScrollBar; }
 
     // Convenience: add the first child (wraps AddSlot)
@@ -63,8 +75,6 @@ public:
     void OnArrangeChildren(const FGeometry& AllottedGeometry,
                            std::vector<FArrangedChild>& OutArrangedChildren) const override
     {
-        if (m_Slots.empty()) return;
-
         const UIRect viewport = AllottedGeometry.ToRect();
         float totalChildSize = 0.0f;
         float maxCrossSize = 0.0f;
@@ -82,24 +92,15 @@ public:
         float maxScroll = std::max(0.0f, totalChildSize - viewLen);
         float clampedOffset = std::clamp(ScrollOffset, 0.0f, maxScroll);
         ScrollOffset = clampedOffset;  // write-back
+        m_MaxScroll = maxScroll;
 
-        // Update scroll bar
         if (m_ScrollBar)
         {
             m_ScrollBar->ViewFraction = (totalChildSize > 0.0f)
                 ? std::min(1.0f, viewLen / totalChildSize) : 1.0f;
             m_ScrollBar->Value = (maxScroll > 0.0f) ? clampedOffset / maxScroll : 0.0f;
-        }
-
-        // Read scroll bar value if no programmatic offset
-        if (maxScroll > 0.0f && m_ScrollBar)
-        {
-            float barOff = m_ScrollBar->Value * maxScroll;
-            if (barOff != clampedOffset)
-            {
-                ScrollOffset = barOff;
-                clampedOffset = barOff;
-            }
+            m_ScrollBar->TrackClickStep = (maxScroll > 0.0f) ? viewLen / maxScroll : 0.0f;
+            m_ScrollBar->WheelStep = (maxScroll > 0.0f) ? ScrollSpeed / maxScroll : 0.0f;
         }
 
         // Position children
@@ -180,6 +181,7 @@ public:
 
 private:
     std::shared_ptr<SScrollBar> m_ScrollBar;
+    mutable float m_MaxScroll {0.0f};
 };
 
 }  // namespace ZSlate
