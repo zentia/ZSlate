@@ -802,8 +802,10 @@ void SMultiLineEditableText::OnMouseMove(const Vector2& pos)
         return;
     }
     
-    // Update cursor position on drag
-    if (m_HasFocus)
+    // Update cursor position on drag. Only while a press is actually held:
+    // moves are delivered every frame the cursor is over the widget, so
+    // without this the caret would follow the mouse on a plain hover.
+    if (m_HasFocus && m_SelectingWithMouse)
     {
         FTextLocation NewLocation = HitTestLocation(pos - m_CachedGeometry.AbsolutePosition);
         
@@ -861,7 +863,8 @@ FReply SMultiLineEditableText::OnMouseButtonDown(const Vector2& pos, int button)
     FTextLocation Location = HitTestLocation(pos - m_CachedGeometry.AbsolutePosition);
     CursorLocation = Location;
     Selection = FTextSelection();
-    
+    m_SelectingWithMouse = true;
+
     return FReply::Handled();
 }
 
@@ -870,12 +873,14 @@ FReply SMultiLineEditableText::OnMouseButtonUp(const Vector2& pos, int button)
     if (button != 0) return FReply::Unhandled();
     
     m_DraggingThumb = false;
+    m_SelectingWithMouse = false;
     return FReply::Handled().ReleaseMouseCapture();
 }
 
 void SMultiLineEditableText::OnMouseCaptureLost()
 {
     m_DraggingThumb = false;
+    m_SelectingWithMouse = false;
 }
 
 FReply SMultiLineEditableText::OnMouseWheel(const Vector2& pos, float delta)
@@ -895,6 +900,7 @@ void SMultiLineEditableText::OnFocusReceived()
 void SMultiLineEditableText::OnFocusLost()
 {
     m_HasFocus = false;
+    m_SelectingWithMouse = false;
     Selection = FTextSelection();
 }
 

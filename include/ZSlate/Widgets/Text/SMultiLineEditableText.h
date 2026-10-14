@@ -244,6 +244,11 @@ private:
     
     bool m_HasFocus {false};
     bool m_DraggingThumb {false};
+    // True between a press in the text area and its release. OnMouseMove now
+    // arrives on every frame the cursor is over the widget, not only while it
+    // holds the capture, so the move handler needs this to tell a real
+    // drag-selection apart from the cursor simply resting over focused text.
+    bool m_SelectingWithMouse {false};
     float m_DragGrab {0.0f};
     
     // Composition (IME) support
