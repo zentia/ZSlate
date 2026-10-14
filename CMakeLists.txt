@@ -15,8 +15,13 @@ file(GLOB_RECURSE ZSLATE_SOURCES src/*.cpp)
 # The D3D11 renderer backend is Windows-only (uses HWND / ID3D11* / DXGI types).
 # Exclude it on non-Windows platforms so clang (Android/iOS) doesn't try to compile it.
 if(NOT WIN32)
-    list(FILTER ZSLATE_HEADERS EXCLUDE REGEX "Platform[/\\]D3D11[/\\]")
-    list(FILTER ZSLATE_SOURCES EXCLUDE REGEX "Platform[/\\]D3D11[/\\]")
+    # D3D11 renderer, the Win32 DPI/host services and FSlateStandaloneApp are all
+    # Windows-only (HWND / ID3D11* / DXGI types). Excluding them keeps clang
+    # (Android/iOS) from trying to compile them.
+    list(FILTER ZSLATE_HEADERS EXCLUDE REGEX "Platform[/\\](D3D11|Win32)[/\\]")
+    list(FILTER ZSLATE_SOURCES EXCLUDE REGEX "Platform[/\\](D3D11|Win32)[/\\]")
+    list(FILTER ZSLATE_HEADERS EXCLUDE REGEX "App[/\\]SlateStandaloneApp")
+    list(FILTER ZSLATE_SOURCES EXCLUDE REGEX "App[/\\]SlateStandaloneApp")
 endif()
 
 # Create static library
@@ -83,7 +88,16 @@ install(DIRECTORY include/ZSlate
 # Tests
 if(ZSLATE_BUILD_TESTS)
     enable_testing()
-    # Add tests here
+
+    # Headless: no GPU / window / font file needed, so it runs on a build agent.
+    add_executable(ZSlateListViewTests tests/slate_list_view_tests.cpp)
+    target_link_libraries(ZSlateListViewTests PRIVATE ZSlate)
+    target_compile_features(ZSlateListViewTests PRIVATE cxx_std_20)
+    if(MSVC)
+        target_compile_options(ZSlateListViewTests PRIVATE /W4 /permissive- /utf-8)
+        target_compile_definitions(ZSlateListViewTests PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
+    endif()
+    add_test(NAME ZSlateListViewTests COMMAND ZSlateListViewTests)
 endif()
 
 # Examples

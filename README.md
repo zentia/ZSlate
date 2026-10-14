@@ -132,6 +132,76 @@ struct MyRenderer : public ZSlate::ISlateRenderer
 > collision with the `windows.h` `DrawText` macro (which `#define`s `DrawText` →
 > `DrawTextA`/`DrawTextW`).
 
+### Option 0 (preferred): FSlateStandaloneApp — the whole host, done for you
+
+Options 1 and 2 above are what every standalone ZSlate tool used to re-implement
+by hand, five times over: window class, message pump, `ISlatePlatform`, DPI
+awareness + `WM_DPICHANGED`, and a hardcoded font load. The copies drifted —
+two had no DPI support at all, four hardcoded `C:\Windows\Fonts`, and the DPI
+decorator was constructed with different pixel-snapping flags.
+
+`ZSlate/App/SlateStandaloneApp.h` owns all of it. **New tools should start here.**
+
+```cpp
+#include "ZSlate/App/SlateStandaloneApp.h"
+
+int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
+{
+    ZSlate::FStandaloneAppDesc desc;
+    desc.Title  = "My Tool";
+    desc.Width  = 1280.0f;              // logical (96-DPI) units
+    desc.Height = 800.0f;
+    desc.Font   = ZSlate::Win32::ESystemFont::Mono;   // or ::Sans
+
+    ZSlate::FSlateStandaloneApp app;
+    if (!app.Initialize(desc)) return 1;   // DPI awareness, fonts, window, D3D11
+
+    app.SetRootContent(BuildMyUI());
+
+    app.OnDropFile = [](const std::string& p) { /* ... */ return true; };
+    app.OnKey      = [](unsigned vk, bool down) -> bool { /* true = consumed */ return false; };
+
+    return app.Run();                      // pump + TickFrame + Present
+}
+```
+
+You get, with no extra code:
+
+- **Per-monitor DPI v2** declared before the first window exists, `WM_DPICHANGED`
+  handled, and an initial window sized for the monitor scale.
+- **Fonts**: Segoe UI / Consolas + a CJK fallback chain, located via
+  `GetWindowsDirectoryW()` — never a hardcoded drive letter.
+- **Logical/physical coordinate conversion** in exactly one place: the WndProc
+  divides on the way in, `FSlateDpiScaleRenderer` multiplies on the way out.
+  Widgets keep authoring in 96-DPI units.
+- **UTF-16 surrogate pairing** on `WM_CHAR`, mouse capture, focus-loss button
+  reset, clipboard, and a text measurer wired through the DPI decorator.
+
+Supporting helpers, usable without the full shell:
+
+| Header | Contents |
+|---|---|
+| `ZSlate/Platform/Win32/SlateWin32Dpi.h` | `DeclareDpiAwareness`, `QueryDpiScaleForWindow`, `QuerySystemDpiScale`, `ResizeWindowForDpi` |
+| `ZSlate/Platform/Win32/SlateWin32Host.h` | `LoadSystemFonts`, `KeyFromVirtualKey`, `InstallClipboardBridge`, `Utf8FromWide`/`WideFromUtf8`, `CommandLineArgsUtf8`, `EnsureConsole`/`StdOutIsRedirected` |
+
+Both are Windows-only and compiled out on other platforms, like
+`Platform/D3D11/ZSlateD3D11Renderer.h`.
+
+### Tests
+
+```bash
+cmake -S . -B build -DZSLATE_BUILD_TESTS=ON
+cmake --build build --config Release
+ctest --test-dir build -C Release
+```
+
+`tests/slate_list_view_tests.cpp` is the pattern to follow: headless (no GPU,
+window or font file), driven through `FSlateRecordingRenderer`, asserting on
+**draw-call counts** rather than pixels — a screenshot cannot show whether list
+virtualisation works, because a DXGI flip-model swapchain hands GDI a blank
+surface. It currently pins `SListView` at 180K rows: bounded text draws, bounded
+live widgets, recycled rows carrying fresh data, and a balanced clip stack.
+
 ## CMake Integration
 
 ```cmake

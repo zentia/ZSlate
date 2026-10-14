@@ -309,6 +309,13 @@ public:
         RequestRefresh();
     }
 
+    // ---- Diagnostics -------------------------------------------------------
+
+    // Row widgets currently alive. Virtualisation is only real if this stays
+    // proportional to the *visible* row count rather than to Items.size();
+    // tests/slate_list_view_tests.cpp asserts exactly that at 180K items.
+    size_t GetLiveWidgetCount() const { return m_ItemToWidget.size(); }
+
 private:
     mutable int32_t m_HoveredIndex {-1};
     mutable int32_t m_LastClickedIndex {-1};
