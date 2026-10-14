@@ -36,6 +36,24 @@ public:
     void SetRootContent(std::shared_ptr<SWidget> root) { m_Root = std::move(root); }
     std::shared_ptr<SWidget> GetRootContent() const { return m_Root; }
 
+    // ---- Modal layer (UE FSlateApplication::AddModalWindow, simplified) -----
+    // While a modal widget is installed, PaintInto dims the root content and
+    // paints the modal centred at its desired size on top. Hosts route input
+    // to GetInputRoot() so the content behind the modal cannot be clicked.
+    void ShowModal(std::shared_ptr<SWidget> modal) { m_Modal = std::move(modal); }
+    // The closed modal is kept alive until the next PaintInto: CloseModal is
+    // typically called from a click handler *inside* the modal, which must
+    // not be destroyed while it is still on the call stack.
+    void CloseModal() { if (m_Modal) m_ClosedModal = std::move(m_Modal); }
+    bool HasModal() const { return m_Modal != nullptr; }
+    std::shared_ptr<SWidget> GetModal() const { return m_Modal; }
+
+    // The widget tree that should receive input this frame.
+    std::shared_ptr<SWidget> GetInputRoot() const { return m_Modal ? m_Modal : m_Root; }
+
+    // Colour drawn over the root content while a modal is open.
+    UIColor ModalScrimColor {0.0f, 0.0f, 0.0f, 0.45f};
+
     // Advance any animations / timers. No-op until widgets need it.
     void Tick(float delta_seconds);
 
@@ -47,5 +65,7 @@ private:
     SlateApplication() = default;
 
     std::shared_ptr<SWidget> m_Root;
+    std::shared_ptr<SWidget> m_Modal;
+    std::shared_ptr<SWidget> m_ClosedModal;
 };
 }  // namespace ZSlate

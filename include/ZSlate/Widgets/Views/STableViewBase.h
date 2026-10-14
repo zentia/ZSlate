@@ -109,7 +109,9 @@ public:
 
     float GetHeaderHeight() const
     {
-        return m_HeaderRow ? m_HeaderRow->GetDesiredSize().y : 0.0f;
+        // The header is painted by the view, not routed as a child, so its
+        // cached desired size is never refreshed; ask it directly.
+        return m_HeaderRow ? m_HeaderRow->ComputeDesiredSize().y : 0.0f;
     }
 
     void ClampScrollOffset(int32_t totalItems, float viewLength)

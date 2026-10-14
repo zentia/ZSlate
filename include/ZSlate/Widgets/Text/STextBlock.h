@@ -8,6 +8,7 @@
 
 #include "ZSlate/Widgets/SWidget.h"
 
+#include <algorithm>
 #include <string>
 
 namespace ZSlate
@@ -34,6 +35,13 @@ public:
 
     Vector2 ComputeDesiredSize() const override
     {
+        // Prefer the real font metrics; the per-byte estimate is only a fallback
+        // for hosts that never installed a measurer.
+        if (GSlateTextMeasurer && !Text.empty())
+        {
+            const Vector2 measured = GSlateTextMeasurer->Measure(Text, FontSize);
+            return Vector2(measured.x, std::max(measured.y, FontSize + 4.0f));
+        }
         return Vector2(static_cast<float>(Text.length()) * FontSize * 0.6f, FontSize + 4.0f);
     }
 

@@ -13,6 +13,37 @@ namespace ZSlate
     thread_local bool SlateInputRouter::s_CtrlDown = false;
     thread_local bool SlateInputRouter::s_ShiftDown = false;
     thread_local bool SlateInputRouter::s_AltDown = false;
+    thread_local std::weak_ptr<SWidget> SlateInputRouter::s_Popup;
+
+void SlateInputRouter::OpenPopup(const std::shared_ptr<SWidget>& owner)
+{
+    if (owner && dynamic_cast<ISlatePopup*>(owner.get()))
+        s_Popup = owner;
+}
+
+void SlateInputRouter::ClosePopup(const SWidget* owner)
+{
+    if (s_Popup.lock().get() == owner)
+        s_Popup.reset();
+}
+
+std::shared_ptr<SWidget> SlateInputRouter::GetActivePopupOwner()
+{
+    auto owner = s_Popup.lock();
+    auto* popup = owner ? dynamic_cast<ISlatePopup*>(owner.get()) : nullptr;
+    if (!popup || !popup->IsPopupOpen())
+    {
+        s_Popup.reset();
+        return nullptr;
+    }
+    return owner;
+}
+
+ISlatePopup* SlateInputRouter::GetActivePopup()
+{
+    auto owner = GetActivePopupOwner();
+    return owner ? dynamic_cast<ISlatePopup*>(owner.get()) : nullptr;
+}
 
 namespace
 {
@@ -218,6 +249,29 @@ void SlateInputRouter::ProcessMouse(const std::shared_ptr<SWidget>& root,
                                     float wheel_delta,
                                     bool right_down)
 {
+    // ---- Open popup swallows the pointer (UE menu stack) -------------------
+    // The owner usually lives inside `root`, but its dropdown extends beyond
+    // its own geometry, so hit-testing the tree cannot reach it. Hover is
+    // dropped for the tree underneath, and the gesture that opened the popup
+    // is ended so its button-up does not land on a stale capture.
+    if (const std::shared_ptr<SWidget> owner = GetActivePopupOwner())
+    {
+        if (!m_HoverPath.empty() || !m_Captured.expired() || !m_RightCaptured.expired())
+        {
+            for (const auto& weak : m_HoverPath)
+                if (auto widget = weak.lock()) widget->OnMouseLeave();
+            m_HoverPath.clear();
+            m_Captured.reset();
+            m_RightCaptured.reset();
+            m_PressPath.clear();
+            m_LeftPressed = false;
+        }
+        dynamic_cast<ISlatePopup*>(owner.get())->ProcessPopupMouse(mouse_screen, left_down, wheel_delta);
+        m_PrevLeftDown = left_down;
+        m_PrevRightDown = right_down;
+        return;
+    }
+
     // Build new hit path using weak_ptrs (UE: TWeakPtr<SWidget>).
     std::vector<std::weak_ptr<SWidget>> new_path;
     if (root && is_over_host && root->IsHitTestVisible() && root->GetCachedGeometry().IsUnderLocation(mouse_screen))

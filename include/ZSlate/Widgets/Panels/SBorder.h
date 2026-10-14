@@ -1,8 +1,7 @@
 #pragma once
 
-// Minimal SBorder stub — ZEditor build dependency.
-// TODO: replace with full implementation from ZSlate submodule.
-//
+// SBorder: a single-child container that paints a background (and optional
+// outline) behind its padded content.
 // Directory: Widgets/Panels/SBorder.h  (UE analogue: Widgets/Layout/SBorder.h)
 
 #include "ZSlate/Core/SlateGeometry.h"
@@ -19,30 +18,27 @@ public:
 
     void SetBorder(const FMargin& m) { (void)m; }
     void SetPadding(const FMargin& p) { Padding = p; }
-    void SetBorderColor(const UIColor& c) { BorderColor = c; }
+    void SetBorderColor(const UIColor& c) { BorderColor = c; BorderThickness = std::max(BorderThickness, 1.0f); }
     void SetBackgroundColor(const UIColor& c) { BackgroundColor = c; }
 
-    // Members accessed by UMG UBorder.h
+    // Padding / HAlign / VAlign come from SCompoundWidget (content fills by default).
     UIColor   BackgroundColor {0.2f, 0.2f, 0.2f, 1.0f};
     bool      DrawBackground {true};
-    FMargin   Padding;
-    EHorizontalAlignment HAlign {EHorizontalAlignment::Center};
-    EVerticalAlignment VAlign {EVerticalAlignment::Center};
+    UIColor   BorderColor {0.5f, 0.5f, 0.5f, 1.0f};
+    float     BorderThickness {0.0f};   // 0 = no outline
 
+    // The content is painted by SWidget::Paint through ArrangeChildren; this
+    // only draws the border's own visuals.
     void OnPaint(const FPaintContext& ctx, const FGeometry& geom) const override
     {
-        if (ctx.Renderer && Visibility != EVisibility::Collapsed && Visibility != EVisibility::Hidden)
-        {
-            const UIRect rect = geom.ToRect();
-            if (DrawBackground)
-                ctx.Renderer->DrawQuad(rect, BackgroundColor);
-            if (m_Child)
-                m_Child->Paint(ctx, geom);
-        }
+        if (!ctx.Renderer)
+            return;
+        const UIRect rect = geom.ToRect();
+        if (DrawBackground)
+            ctx.Renderer->DrawQuad(rect, BackgroundColor);
+        if (BorderThickness > 0.0f)
+            ctx.Renderer->DrawRect(rect, BorderColor, BorderThickness);
     }
-
-private:
-    UIColor   BorderColor {0.5f, 0.5f, 0.5f, 1.0f};
 };
 
 }  // namespace ZSlate

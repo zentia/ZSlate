@@ -1,5 +1,7 @@
 #include "ZSlate/Widgets/Text/SMultiLineEditableText.h"
 
+#include <algorithm>
+
 namespace ZSlate
 {
 
@@ -549,8 +551,8 @@ Vector2 SMultiLineEditableText::ComputeDesiredSize() const
 {
     float Width = m_CachedGeometry.LocalSize.x > 0.0f ? m_CachedGeometry.LocalSize.x : Options.MinWidth;
     float Height = GetContentHeight();
-    
-    return Vector2(Width, Height);
+
+    return Vector2(std::max(Width, Options.MinWidth), std::max(Height, Options.MinHeight));
 }
 
 void SMultiLineEditableText::OnPaint(const FPaintContext& ctx, const FGeometry& geom) const

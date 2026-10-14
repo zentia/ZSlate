@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ZSlate/Application/SlateInput.h"
 #include "ZSlate/Widgets/SCompoundWidget.h"
 #include "ZSlate/Widgets/Input/SButton.h"
 #include "ZSlate/Widgets/Text/STextBlock.h"
@@ -20,8 +21,19 @@ namespace ZSlate
 //
 // Displays the selected item; clicking opens a dropdown list.
 //
+// The default label for std::string items is the string itself, so a
+// SComboBox<std::string> works without an OnGetLabel callback.
 template <typename T>
-class SComboBox : public SCompoundWidget
+inline std::string ComboBoxDefaultLabel(const T&, int32_t index) { return "#" + std::to_string(index); }
+inline std::string ComboBoxDefaultLabel(const std::string& item, int32_t) { return item; }
+
+//
+// While open, the dropdown is registered with the SlateInputRouter popup
+// layer: SlateApplication::PaintInto draws it above everything else and the
+// router feeds it all mouse input until it closes. Hosts with their own
+// overlay can set ExternalPopup and drive PaintPopup / ProcessPopupMouse.
+template <typename T = std::string>
+class SComboBox : public SCompoundWidget, public ISlatePopup
 {
 public:
     // Data
@@ -34,6 +46,10 @@ public:
     float FontSize {13.0f};
     float MaxDropdownHeight {200.0f};
     Vector2 Size {160.0f, 26.0f};
+    // When > 0 overrides Size.y (handy when the width is left to the parent).
+    float Height {0.0f};
+    // Shown while nothing is selected.
+    std::string Placeholder {"..."};
     // Overlay hosts call PaintPopup after the root, and ProcessPopupMouse before routing to the root.
     bool ExternalPopup {false};
 
@@ -41,9 +57,38 @@ public:
     std::function<std::string(const T&)> OnGetLabel;
     std::function<void(const T&, int32_t)> OnSelectionChanged;
 
-    Vector2 ComputeDesiredSize() const override { return Size; }
+    void SetOptions(std::vector<T> options)
+    {
+        Options = std::move(options);
+        ClosePopup();
+        if (SelectedIndex >= static_cast<int32_t>(Options.size()))
+        {
+            SelectedIndex = -1;
+            SelectedItem = T {};
+        }
+    }
+
+    void SetSelectedIndex(int32_t index)
+    {
+        if (index < 0 || index >= static_cast<int32_t>(Options.size()))
+        {
+            SelectedIndex = -1;
+            SelectedItem = T {};
+            return;
+        }
+        SelectedIndex = index;
+        SelectedItem = Options[index];
+    }
+
+    Vector2 ComputeDesiredSize() const override { return Vector2(Size.x, Height > 0.0f ? Height : Size.y); }
     bool IsOpen() const { return m_Open; }
-    void ClosePopup() { m_Open = false; m_PressedItem = -1; }
+    bool IsPopupOpen() const override { return m_Open; }
+    void ClosePopup()
+    {
+        m_Open = false;
+        m_PressedItem = -1;
+        SlateInputRouter::ClosePopup(this);
+    }
     bool SupportsKeyboardFocus() const override { return true; }
     void OnFocusLost() override { ClosePopup(); }
     void OnMouseCaptureLost() override { ClosePopup(); }
@@ -68,22 +113,15 @@ public:
             TextAnchor::MiddleCenter, TextWrapMode::NoWrap);
 
         // Selected text
-        std::string label;
-        if (SelectedIndex >= 0 && SelectedIndex < static_cast<int32_t>(Options.size()))
-            label = OnGetLabel ? OnGetLabel(Options[SelectedIndex]) : "?";
-        else
-            label = "...";
+        const bool hasSelection = SelectedIndex >= 0 && SelectedIndex < static_cast<int32_t>(Options.size());
+        const std::string label = hasSelection ? GetLabel(SelectedIndex) : Placeholder;
 
         ctx.Renderer->DrawTextLabel(
             UIRect(r.x + 6.0f, r.y, r.w - 30.0f, r.h),
-            label, FontSize, UIColor(0.88f, 0.89f, 0.92f, 1.0f),
+            label, FontSize,
+            hasSelection ? UIColor(0.88f, 0.89f, 0.92f, 1.0f) : UIColor(0.50f, 0.52f, 0.58f, 1.0f),
             TextAnchor::MiddleLeft, TextWrapMode::NoWrap);
-
-        if (m_Open && !ExternalPopup)
-        {
-            UpdatePopupRect(UIRect(r.x, r.y, r.w, r.h + MaxDropdownHeight));
-            PaintDropdown(ctx);
-        }
+        // The dropdown itself is painted through the popup layer (PaintPopup).
     }
 
     // ---- Input ---------------------------------------------------------------
@@ -127,7 +165,7 @@ public:
     }
 
     // Returns true even for a dismissing click: the host must not click through to the root.
-    bool ProcessPopupMouse(const Vector2& pos, bool leftDown, float wheel)
+    bool ProcessPopupMouse(const Vector2& pos, bool leftDown, float wheel) override
     {
         if (!m_Open) return false;
         const int32_t hit = HitItem(pos);
@@ -151,7 +189,7 @@ public:
         return true;
     }
 
-    void PaintPopup(ISlateRenderer* renderer, const UIRect& viewport) const
+    void PaintPopup(ISlateRenderer* renderer, const UIRect& viewport) const override
     {
         if (!m_Open || !renderer) return;
         UpdatePopupRect(viewport);
@@ -172,6 +210,11 @@ private:
     mutable int32_t m_VisibleRows {0};
     mutable UIRect m_PopupRect;
 
+    std::string GetLabel(int32_t index) const
+    {
+        return OnGetLabel ? OnGetLabel(Options[index]) : ComboBoxDefaultLabel(Options[index], index);
+    }
+
     void OpenPopup(bool leftDown)
     {
         if (Options.empty() || ItemHeight <= 0) return;
@@ -180,6 +223,8 @@ private:
         m_PressedItem = -1;
         m_ActiveItem = std::clamp(SelectedIndex, 0, static_cast<int32_t>(Options.size()) - 1);
         m_FirstItem = 0;
+        if (!ExternalPopup)
+            SlateInputRouter::OpenPopup(std::const_pointer_cast<SWidget>(shared_from_this()));
     }
     void Commit(int32_t index)
     {
@@ -229,7 +274,7 @@ private:
             UIRect item(m_PopupRect.x + 1, m_PopupRect.y + row * ItemHeight, m_PopupRect.w - 2, ItemHeight);
             if (i == m_ActiveItem)
                 ctx.Renderer->DrawQuad(item, UIColor(0.18f, 0.35f, 0.62f, 1.0f));
-            const std::string label = OnGetLabel ? OnGetLabel(Options[i]) : ("#" + std::to_string(i));
+            const std::string label = GetLabel(i);
             ctx.Renderer->DrawTextLabel(UIRect(item.x + 6, item.y, item.w - 12, item.h), label, FontSize,
                 UIColor(0.95f, 0.95f, 0.95f, 1.0f), TextAnchor::MiddleLeft, TextWrapMode::NoWrap);
         }

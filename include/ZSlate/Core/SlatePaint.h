@@ -73,6 +73,9 @@ public:
     virtual Vector2 Measure(const std::string& text, float font_size) const = 0;
 };
 
+// Process-wide measurer installed by SlateApplication::SetTextMeasurer (may be null).
+extern ISlateTextMeasurer* GSlateTextMeasurer;
+
 // ============================================================================
 // ISlatePlatform - All platform abstractions in one place
 // ============================================================================

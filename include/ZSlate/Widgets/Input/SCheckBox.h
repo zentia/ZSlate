@@ -77,8 +77,8 @@ public:
     FReply OnMouseButtonDown(const Vector2& pos, int button) override
     {
         if (button != 0) return FReply::Unhandled();
+        (void)pos;
         Checked = !Checked;
-        fprintf(stderr, "[SCheckBox] toggled to %d (pos %.0f,%.0f)\n", (int)Checked, pos.x, pos.y);
         if (OnCheckStateChanged) OnCheckStateChanged(Checked);
         return FReply::Handled();
     }

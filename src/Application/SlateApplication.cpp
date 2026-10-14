@@ -1,5 +1,7 @@
 #include "ZSlate/Application/SlateApplication.h"
 
+#include <algorithm>
+
 namespace ZSlate
 {
 // Definition of the process-wide text measurer declared in SlatePaint.h.
@@ -54,20 +56,48 @@ void SlateApplication::Tick(float delta_seconds)
 
 void SlateApplication::PaintInto(ISlateRenderer* renderer, const UIRect& region)
 {
-    if (m_Root == nullptr || renderer == nullptr)
+    m_ClosedModal.reset();
+
+    if (renderer == nullptr || (m_Root == nullptr && m_Modal == nullptr))
         return;
 
-    // 1. Bottom-up desired-size cache.
-    m_Root->CacheDesiredSize();
-
-    // 2. Top-down arrange + paint, clipped to the host region.
-    const FGeometry root_geometry(Vector2(region.x, region.y), Vector2(region.w, region.h));
     FPaintContext ctx;
     ctx.Renderer = renderer;
     ctx.LayerId = 0;
 
     renderer->PushClipRect(region);
-    m_Root->Paint(ctx, root_geometry);
+
+    if (m_Root)
+    {
+        // 1. Bottom-up desired-size cache.
+        m_Root->CacheDesiredSize();
+
+        // 2. Top-down arrange + paint, clipped to the host region.
+        const FGeometry root_geometry(Vector2(region.x, region.y), Vector2(region.w, region.h));
+        m_Root->Paint(ctx, root_geometry);
+    }
+
+    if (m_Modal)
+    {
+        // Keep a reference: a widget inside the modal may close it mid-paint.
+        const std::shared_ptr<SWidget> modal = m_Modal;
+
+        renderer->DrawQuad(region, ModalScrimColor);
+
+        modal->CacheDesiredSize();
+        const Vector2 desired = modal->GetDesiredSize();
+        const float w = std::min(desired.x, region.w);
+        const float h = std::min(desired.y, region.h);
+        const FGeometry modal_geometry(Vector2(region.x + (region.w - w) * 0.5f, region.y + (region.h - h) * 0.5f),
+                                       Vector2(w, h));
+        ctx.LayerId = 1;
+        modal->Paint(ctx, modal_geometry);
+    }
+
+    // Popups (combo dropdowns, ...) go above the root and any modal.
+    if (ISlatePopup* popup = SlateInputRouter::GetActivePopup())
+        popup->PaintPopup(renderer, region);
+
     renderer->PopClipRect();
 }
 }  // namespace ZSlate

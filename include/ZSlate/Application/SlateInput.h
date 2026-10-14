@@ -9,7 +9,22 @@
 namespace ZSlate
 {
 class SWidget;
+struct ISlateRenderer;
 struct FDragDropOperation;
+
+// A transient overlay owned by a widget (combo-box dropdown, menu). While one
+// is open it is painted above everything by SlateApplication::PaintInto and
+// receives all mouse input before the widget tree (UE FSlateApplication menu
+// stack, simplified to one level). Implemented by the owning SWidget.
+class ISlatePopup
+{
+public:
+    virtual ~ISlatePopup() = default;
+    // Return false once the popup has dismissed itself.
+    virtual bool IsPopupOpen() const = 0;
+    virtual bool ProcessPopupMouse(const Vector2& pos, bool left_down, float wheel) = 0;
+    virtual void PaintPopup(ISlateRenderer* renderer, const UIRect& viewport) const = 0;
+};
 
 // Routes mouse + keyboard input into a ZSlate widget tree (UE Slate
 // FSlateApplication path, simplified). Drive it once per frame from the host
@@ -64,6 +79,14 @@ public:
         s_ShiftDown = shift;
         s_AltDown = alt;
     }
+
+    // ---- Popup layer (per-thread, shared by every router on the UI thread) --
+    // `owner` must implement ISlatePopup. Opening a popup replaces any other.
+    static void OpenPopup(const std::shared_ptr<SWidget>& owner);
+    // Closes the popup only if `owner` is the active one.
+    static void ClosePopup(const SWidget* owner);
+    static std::shared_ptr<SWidget> GetActivePopupOwner();
+    static ISlatePopup* GetActivePopup();
 
     // Programmatically move keyboard focus (e.g. onto a freshly-shown rename box)
     // or clear it. Safe to pass a widget that is part of the routed tree.
@@ -131,5 +154,6 @@ private:
     static thread_local bool s_CtrlDown;
     static thread_local bool s_ShiftDown;
     static thread_local bool s_AltDown;
+    static thread_local std::weak_ptr<SWidget> s_Popup;
 };
 }  // namespace ZSlate
