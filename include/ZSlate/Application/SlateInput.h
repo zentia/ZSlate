@@ -79,6 +79,15 @@ public:
     // if nothing is hovered. Hosts use this to apply the widget's GetCursor().
     SWidget* GetHoveredWidget() const;
 
+    // ---- Double-click tuning ---------------------------------------------
+    // A press counts as the second half of a double-click when it lands on the
+    // same widget within this time (ms) and this distance (px) of the previous
+    // one. Defaults match the Windows SM_CXDOUBLECLK-ish feel.
+    void  SetDoubleClickTime(double milliseconds) { m_DoubleClickTimeMs = milliseconds; }
+    double GetDoubleClickTime() const { return m_DoubleClickTimeMs; }
+    void  SetDoubleClickDistance(float pixels) { m_DoubleClickDistance = pixels; }
+    float GetDoubleClickDistance() const { return m_DoubleClickDistance; }
+
 private:
     // Helper: lock a weak_ptr, return raw pointer or nullptr if expired.
     static SWidget* Lock(const std::weak_ptr<SWidget>& wp);
@@ -88,6 +97,9 @@ private:
 
     void SetFocus(SWidget* widget);
     void EndDrag();
+
+    // True when this press is the second half of a double-click on `widget`.
+    bool IsDoubleClick(const std::shared_ptr<SWidget>& widget, const Vector2& mouse_screen) const;
 
     // ---- Widget paths use weak_ptr (UE: TWeakPtr<SWidget>) ----
     // Destroyed widgets lock() to nullptr; loops safely skip expired entries.
@@ -107,6 +119,13 @@ private:
     Vector2 m_PressOrigin {0.0f, 0.0f};
     bool m_LeftPressed {false};
     std::shared_ptr<FDragDropOperation> m_DragOp;  // non-null while dragging
+
+    // ---- Double-click tracking -------------------------------------------
+    std::weak_ptr<SWidget> m_LastClicked;
+    Vector2 m_LastClickPos   {0.0f, 0.0f};
+    double  m_LastClickTimeMs {0.0};
+    double  m_DoubleClickTimeMs {500.0};
+    float   m_DoubleClickDistance {5.0f};
 
     // Static modifier key state (per-thread, set by ProcessKey)
     static thread_local bool s_CtrlDown;

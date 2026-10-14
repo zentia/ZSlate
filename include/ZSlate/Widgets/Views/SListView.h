@@ -30,6 +30,10 @@ public:
     FOnGenerateRow OnGenerateRow;
     std::function<void(const ItemType&, int32_t)> OnSelectionChanged;
 
+    // Fired on the second press of a double-click over a row. The row is
+    // selected first; the header strip forwards to SHeaderRow instead.
+    std::function<void(const ItemType&, int32_t)> OnItemDoubleClicked;
+
     // Data source
     std::vector<ItemType> Items;
 
@@ -147,6 +151,30 @@ public:
             return FReply::Handled();
         }
         return STableViewBase::OnMouseButtonDown(pos, btn);
+    }
+
+    FReply OnMouseButtonDoubleClick(const Vector2& pos, int btn) override
+    {
+        if (btn != 0 || Items.empty()) return FReply::Unhandled();
+
+        const UIRect view = GetCachedGeometry().ToRect();
+        const float  hh   = GetHeaderHeight();
+
+        if (pos.y < view.y + hh)
+        {
+            return m_HeaderRow ? m_HeaderRow->OnMouseButtonDoubleClick(pos, btn)
+                               : FReply::Unhandled();
+        }
+
+        const int32_t idx = static_cast<int32_t>((pos.y - view.y - hh + m_ScrollOffset) / ItemHeight);
+        if (idx < 0 || idx >= static_cast<int32_t>(Items.size())) return FReply::Unhandled();
+
+        SetSelected(idx, true);
+        m_LastClickedIndex = idx;
+
+        if (OnItemDoubleClicked)
+            OnItemDoubleClicked(Items[idx], idx);
+        return FReply::Handled();
     }
 
     // ---- Widget recycling ----------------------------------------------------

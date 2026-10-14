@@ -4,6 +4,7 @@
 #include "ZSlate/Widgets/SWidget.h"
 
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 
 namespace ZSlate
@@ -17,6 +18,13 @@ namespace
 {
     // Movement (in screen px) a press must travel before it becomes a drag.
     constexpr float kDragTriggerDistance = 5.0f;
+
+    // Monotonic clock for double-click detection.
+    double NowMilliseconds()
+    {
+        using clock = std::chrono::steady_clock;
+        return std::chrono::duration<double, std::milli>(clock::now().time_since_epoch()).count();
+    }
 
     // Build the hit path root->deepest, descending into the topmost child that
     // contains the point. Assumes `widget` already contains the point.
@@ -191,6 +199,18 @@ void SlateInputRouter::EndDrag()
 
 // ---- Main input routing (UE: FSlateApplication::RoutePointerMoveEvent) ----
 
+bool SlateInputRouter::IsDoubleClick(const std::shared_ptr<SWidget>& widget,
+                                     const Vector2& mouse_screen) const
+{
+    if (!widget) return false;
+    if (m_LastClicked.lock() != widget) return false;
+    if (NowMilliseconds() - m_LastClickTimeMs > m_DoubleClickTimeMs) return false;
+
+    const float dx = mouse_screen.x - m_LastClickPos.x;
+    const float dy = mouse_screen.y - m_LastClickPos.y;
+    return std::sqrt(dx * dx + dy * dy) <= m_DoubleClickDistance;
+}
+
 void SlateInputRouter::ProcessMouse(const std::shared_ptr<SWidget>& root,
                                     const Vector2& mouse_screen,
                                     bool is_over_host,
@@ -297,6 +317,24 @@ void SlateInputRouter::ProcessMouse(const std::shared_ptr<SWidget>& root,
     if (auto cap = m_Captured.lock())
         cap->OnMouseMove(mouse_screen);
 
+    // ---- Pointer move over the hover path ---------------------------------
+    // OnMouseEnter/OnMouseLeave cannot tell a widget *where* the cursor is, and
+    // the captured widget above used to be the only one that ever got a move.
+    // So anything tracking hover off a plain move -- a list row highlight, a
+    // tree node, a close button, a hover card -- only worked for as long as a
+    // click on it kept the capture alive. Deliver the move to the whole hover
+    // path, deepest first (same order as the wheel bubble below).
+    const std::shared_ptr<SWidget> captured = m_Captured.lock();
+    for (auto it = new_path.rbegin(); it != new_path.rend(); ++it)
+    {
+        if (auto widget = it->lock())
+        {
+            // The captured widget already got it above; do not send it twice.
+            if (widget.get() != captured.get())
+                widget->OnMouseMove(mouse_screen);
+        }
+    }
+
     // ---- Wheel: bubble deepest -> root ----
     if (wheel_delta != 0.0f)
     {
@@ -362,6 +400,32 @@ void SlateInputRouter::ProcessMouse(const std::shared_ptr<SWidget>& root,
                     break;
                 }
             }
+        }
+
+        // ---- Double-click -------------------------------------------------
+        // UE exposes this as FPointerEvent::IsDoubleClick; we synthesise it here
+        // so any widget can opt in through OnMouseButtonDoubleClick.
+        const std::shared_ptr<SWidget> deepest =
+            new_path.empty() ? nullptr : new_path.back().lock();
+
+        if (deepest && IsDoubleClick(deepest, mouse_screen))
+        {
+            // Bubble exactly like the button-down edge above.
+            for (auto it = new_path.rbegin(); it != new_path.rend(); ++it)
+            {
+                if (auto widget = it->lock())
+                {
+                    if (widget->OnMouseButtonDoubleClick(mouse_screen, 0).IsHandled())
+                        break;
+                }
+            }
+            m_LastClicked.reset();
+        }
+        else
+        {
+            m_LastClicked     = deepest;
+            m_LastClickPos    = mouse_screen;
+            m_LastClickTimeMs = NowMilliseconds();
         }
     }
     else if (!left_down && m_PrevLeftDown)

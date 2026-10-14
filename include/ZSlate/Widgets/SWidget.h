@@ -123,6 +123,11 @@ public:
     virtual FReply OnMouseButtonUp(const Vector2& /*screen_pos*/, int /*button*/) { return FReply::Unhandled(); }
     virtual FReply OnMouseWheel(const Vector2& /*screen_pos*/, float /*delta*/) { return FReply::Unhandled(); }
 
+    // Second press of a double-click. Delivered *after* OnMouseButtonDown and
+    // bubbles deepest -> root, exactly like the button-down edge (UE exposes
+    // this as FPointerEvent::IsDoubleClick); the router synthesises it here.
+    virtual FReply OnMouseButtonDoubleClick(const Vector2& /*screen_pos*/, int /*button*/) { return FReply::Unhandled(); }
+
     // Mouse capture was taken away without a matching button-up (e.g. a drag
     // gesture started, or the tree was rebuilt). Reset any "pressed" visuals.
     virtual void OnMouseCaptureLost() {}
