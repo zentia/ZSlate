@@ -4,7 +4,8 @@
 //                       was re-implementing by hand
 // ============================================================================
 // Five executables (LuaMemPreview, TexPreview, ClientProjBranches,
-// ZEnvironmentCollector, ZGpuSelectionInspector) each carried their own copy
+// ZEnvironmentCollector, and the ZGpuSelectionInspector that is now a tab inside
+// ZEnvironmentCollector) each carried their own copy
 // of: an ISlatePlatform subclass, a WNDCLASS/CreateWindow/PeekMessage host, a
 // DPI declaration + WM_DPICHANGED handler, and a hardcoded font-atlas load.
 // The copies had drifted — two had no DPI support at all, one derived the
