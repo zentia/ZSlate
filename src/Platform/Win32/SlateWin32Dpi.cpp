@@ -4,6 +4,8 @@
 
 #include "ZSlate/Platform/Win32/SlateWin32Dpi.h"
 
+#include <algorithm>
+
 #if defined(_WIN32)
 
 namespace ZSlate
@@ -81,8 +83,21 @@ void ResizeWindowForDpi(HWND hwnd, int logical_w, int logical_h, unsigned dpi)
     if (dpi == 0)
         dpi = 96;
 
+    // Contract (see header): the CLIENT area ends up covering logical_w x
+    // logical_h at `dpi` -- that is logical_w * dpi/96 PHYSICAL pixels, so the
+    // widget tree (which lays out in logical units and is scaled by
+    // FSlateDpiScaleRenderer on the way out) keeps its design extent on every
+    // monitor scale. Passing the logical values through as physical pixels
+    // silently shrank the layout area to logical/scale on scaled displays,
+    // which clipped every Fill-width child (buttons, input boxes) at the right
+    // edge. AdjustWindowRectExForDpi only scales the frame, so the client size
+    // has to be scaled here, before the frame is added.
+    const float scale = static_cast<float>(dpi) / 96.0f;
+    const LONG client_w = static_cast<LONG>(logical_w * scale);
+    const LONG client_h = static_cast<LONG>(logical_h * scale);
+
     const DWORD style = static_cast<DWORD>(GetWindowLongPtr(hwnd, GWL_STYLE));
-    RECT rect {0, 0, logical_w, logical_h};
+    RECT rect {0, 0, client_w, client_h};
 
     const HMODULE user32 = GetModuleHandleA("user32.dll");
     using AdjustFn = BOOL(WINAPI*)(LPRECT, DWORD, BOOL, DWORD, UINT);
@@ -97,13 +112,37 @@ void ResizeWindowForDpi(HWND hwnd, int logical_w, int logical_h, unsigned dpi)
     {
         // AdjustWindowRect computes margins in the system DPI, so the result
         // has to be grown by the ratio between the window's DPI and 96.
-        RECT at96 {0, 0, logical_w, logical_h};
+        RECT at96 {0, 0, client_w, client_h};
         AdjustWindowRectEx(&at96, style, FALSE, 0);
-        const long margin_w = (at96.right - at96.left) - logical_w;
-        const long margin_h = (at96.bottom - at96.top) - logical_h;
-        const float s = static_cast<float>(dpi) / 96.0f;
-        rect.right  = logical_w + static_cast<long>(margin_w * s);
-        rect.bottom = logical_h + static_cast<long>(margin_h * s);
+        const long margin_w = (at96.right - at96.left) - client_w;
+        const long margin_h = (at96.bottom - at96.top) - client_h;
+        rect.right  = client_w + static_cast<LONG>(margin_w * scale);
+        rect.bottom = client_h + static_cast<LONG>(margin_h * scale);
+    }
+
+    // Never bigger than the monitor's work area: a fixed logical design at a
+    // high scale can legitimately exceed a small panel, and an unsized-clamp
+    // window is unusable. The client shrinks proportionally; the scroll box
+    // absorbs the difference.
+    HMONITOR monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+    MONITORINFO info{};
+    info.cbSize = sizeof(info);
+    if (monitor != nullptr && GetMonitorInfoW(monitor, &info) != FALSE)
+    {
+        const LONG avail_w = info.rcWork.right - info.rcWork.left;
+        const LONG avail_h = info.rcWork.bottom - info.rcWork.top;
+        const LONG window_w = rect.right - rect.left;
+        const LONG window_h = rect.bottom - rect.top;
+        if (window_w > avail_w || window_h > avail_h)
+        {
+            const float fit = std::min(
+                window_w > avail_w ? static_cast<float>(avail_w) / window_w : 1.0f,
+                window_h > avail_h ? static_cast<float>(avail_h) / window_h : 1.0f);
+            const LONG frame_w = window_w - client_w;
+            const LONG frame_h = window_h - client_h;
+            rect.right = rect.left + static_cast<LONG>(client_w * fit) + frame_w;
+            rect.bottom = rect.top + static_cast<LONG>(client_h * fit) + frame_h;
+        }
     }
 
     SetWindowPos(hwnd, nullptr, 0, 0, rect.right - rect.left, rect.bottom - rect.top,
