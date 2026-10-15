@@ -55,6 +55,21 @@ public:
         AddSlot().Content = std::move(child);
     }
 
+    // --- Scrolling -----------------------------------------------------------
+
+    // Largest ScrollOffset that still shows content; 0 when everything fits.
+    // Written by OnArrangeChildren, so it is only meaningful after a layout pass.
+    float GetMaxScroll() const { return m_MaxScroll; }
+
+    // True when scrolled to (or pinned at) the end of the content.
+    bool IsAtBottom(float tolerance = 1.0f) const { return ScrollOffset >= m_MaxScroll - tolerance; }
+
+    // Pin to the end. The offset is clamped to m_MaxScroll by the next
+    // OnArrangeChildren, so a huge value is safe here and survives the content
+    // growing between this call and the next arrange (log consoles call this
+    // right after appending a row).
+    void ScrollToBottom() { ScrollOffset = 1.0e30f; }
+
     // --- Layout --------------------------------------------------------------
 
     Vector2 ComputeDesiredSize() const override

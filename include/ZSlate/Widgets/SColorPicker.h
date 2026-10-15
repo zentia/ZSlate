@@ -19,7 +19,10 @@ namespace ZSlate
 class SColorPicker : public SCompoundWidget
 {
 public:
-    float R {1.0f}, G {1.0f}, B {1.0f}, A {1.0f};
+    // mutable: UpdateColor()/ApplySlider() run from the const input handlers
+    // (OnMouseButtonDown/OnMouseMove are const overrides), same reason m_DragMode
+    // is mutable. Nothing outside this class is affected.
+    mutable float R {1.0f}, G {1.0f}, B {1.0f}, A {1.0f};
 
     std::function<void(float r, float g, float b, float a)> OnColorChanged;
 
