@@ -74,21 +74,17 @@ std::wstring WideFromUtf8(const char* utf8);
 // argv in UTF-8. /SUBSYSTEM:WINDOWS executables cannot rely on the CRT's
 // __argv (it is in the ANSI codepage, so non-ASCII paths arrive mangled);
 // this reads GetCommandLineW() instead.
+//
+// Kept for ZSlate's own users. Inside ZEngine, use
+// zengine::appshell::CommandLine (ZAppShell/AppMain.h) instead: it is
+// header-only, so the /MT ZEnvironmentCollector can use the same source as the
+// /MD tree -- which a library like this can never serve.
 std::vector<std::string> CommandLineArgsUtf8();
 
-// ---- Console ------------------------------------------------------------
-// A /SUBSYSTEM:WINDOWS executable has no console, so printf goes nowhere and a
-// headless mode (-batchmode / --stats / --dump-ui) looks like it hung. These
-// attach the caller's console if there is one, otherwise allocate one, and
-// reopen the CRT streams onto it -- the CRT captured invalid handles at startup,
-// so reopening is mandatory, not cosmetic.
-
-// True when stdout is a file or a pipe, i.e. the caller is already capturing
-// the output and must not have a console forced on top of it.
-bool StdOutIsRedirected();
-
-// No-op when redirected. Safe to call more than once.
-void EnsureConsole();
+// The console helpers that used to live here (EnsureConsole /
+// StdOutIsRedirected) are gone: zengine::appshell::EnsureConsole() in
+// ZAppShell/AppMain.h is the one implementation now, and it works for /MT and
+// /MD alike.
 
 }  // namespace Win32
 }  // namespace ZSlate

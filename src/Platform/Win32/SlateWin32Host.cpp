@@ -195,38 +195,10 @@ std::vector<std::string> CommandLineArgsUtf8()
     return args;
 }
 
-// ---- Console -------------------------------------------------------------
-
-bool StdOutIsRedirected()
-{
-    const HANDLE out = GetStdHandle(STD_OUTPUT_HANDLE);
-    if (out == nullptr || out == INVALID_HANDLE_VALUE)
-        return false;
-    const DWORD type = GetFileType(out);
-    return type == FILE_TYPE_DISK || type == FILE_TYPE_PIPE;
-}
-
-void EnsureConsole()
-{
-    // Capturing the output already: attaching a console would steal the
-    // parent's input and leave a stray window behind.
-    if (StdOutIsRedirected())
-        return;
-
-    // ATTACH_PARENT_PROCESS == (DWORD)-1.
-    if (!AttachConsole(static_cast<DWORD>(-1)) && !AllocConsole())
-        return;
-
-    // The C runtime captured the (invalid) handles before we had a console, so
-    // stdout/stderr still point nowhere until they are reopened on CONOUT$.
-    FILE* f = nullptr;
-    freopen_s(&f, "CONOUT$", "w", stdout);
-    freopen_s(&f, "CONOUT$", "w", stderr);
-    // No buffering: without a console-attached CRT flush, a crash or an early
-    // return loses the last lines -- typically the ones explaining the crash.
-    setvbuf(stdout, nullptr, _IONBF, 0);
-    setvbuf(stderr, nullptr, _IONBF, 0);
-}
+// The console helpers that used to be here now live in ZAppShell
+// (zengine::appshell::EnsureConsole), header-only so that both the /MT
+// ZEnvironmentCollector and the /MD tree can use one implementation -- which a
+// compiled-into-ZSlate version could never do.
 
 }  // namespace Win32
 }  // namespace ZSlate

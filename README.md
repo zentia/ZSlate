@@ -182,7 +182,15 @@ Supporting helpers, usable without the full shell:
 | Header | Contents |
 |---|---|
 | `ZSlate/Platform/Win32/SlateWin32Dpi.h` | `DeclareDpiAwareness`, `QueryDpiScaleForWindow`, `QuerySystemDpiScale`, `ResizeWindowForDpi` |
-| `ZSlate/Platform/Win32/SlateWin32Host.h` | `LoadSystemFonts`, `KeyFromVirtualKey`, `InstallClipboardBridge`, `Utf8FromWide`/`WideFromUtf8`, `CommandLineArgsUtf8`, `EnsureConsole`/`StdOutIsRedirected` |
+| `ZSlate/Platform/Win32/SlateWin32Host.h` | `LoadSystemFonts`, `KeyFromVirtualKey`, `InstallClipboardBridge`, `Utf8FromWide`/`WideFromUtf8`, `CommandLineArgsUtf8` |
+
+The console helpers that used to be here (`EnsureConsole` / `StdOutIsRedirected`)
+are now `zengine::appshell::EnsureConsole()` in `ZAppShell/AppMain.h`, shared
+with the rest of the engine. It is header-only on purpose: ZSlate is `/MD` like
+the tree, while `ZEnvironmentCollector` ships `/MT`, so a version compiled into
+this library was unusable by one of the two and had been copied. `CommandLineArgsUtf8`
+stays for ZSlate's own users; inside ZEngine use
+`zengine::appshell::CommandLine` so every executable reads the same wide source.
 
 Both are Windows-only and compiled out on other platforms, like
 `Platform/D3D11/ZSlateD3D11Renderer.h`.
