@@ -21,7 +21,7 @@
 //     a diagonal-resize cursor; everything else stays the arrow.
 // ----------------------------------------------------------------------------
 
-#include "ZSlate/Widgets/SButton.h"
+#include "ZSlate/Widgets/Input/SButton.h"  // lives under Widgets/Input/
 #include "ZSlate/Widgets/SLeafWidget.h"
 
 #include <algorithm>
