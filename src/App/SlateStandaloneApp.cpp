@@ -6,6 +6,7 @@
 
 #if defined(_WIN32)
 
+#include "ZSlate/Core/SlateLog.h"
 #include "ZSlate/Platform/Win32/SlateWin32Dpi.h"
 
 #include <chrono>
@@ -53,7 +54,7 @@ bool FSlateStandaloneApp::Initialize(const FStandaloneAppDesc& desc)
     }
     else
     {
-        std::fprintf(stderr, "[ZSlate] WARNING: no usable system font found; text will be blocky\n");
+        Log(ELogLevel::Warning, "[ZSlate] no usable system font found; text will be blocky");
         m_Batch.SetFontAtlas(nullptr);
     }
 

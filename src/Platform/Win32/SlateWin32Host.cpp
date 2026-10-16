@@ -8,10 +8,13 @@
 
 #include "ZSlate/Application/SlateApplication.h"
 #include "ZSlate/Core/SlateClipboard.h"
+#include "ZSlate/Core/SlateLog.h"
 
+#include <algorithm>
 #include <cstdio>
 #include <cstring>
 #include <filesystem>
+#include <vector>
 
 #include <shellapi.h>  // CommandLineToArgvW
 
@@ -53,12 +56,77 @@ bool LoadSystemFonts(ZSlateFontAtlas& atlas, ESystemFont preference)
     if (!loaded)
         return false;
 
-    // CJK fallback: the primary faces above have no Han glyphs.
-    const wchar_t* cjk[] = {L"msyh.ttc", L"msyhlthc.ttc", L"simsun.ttc", L"simhei.ttf"};
+    // CJK fallback: the primary faces above have no Han glyphs. Candidates are
+    // ordered best-first; Simplified faces win, Traditional faces are the last
+    // resort before the directory scan (a Traditional face still renders
+    // Simplified text, just with a less familiar look).
+    const wchar_t* cjk[] = {
+        L"msyh.ttc", L"msyhlthc.ttc", L"simsun.ttc", L"simhei.ttf",
+        L"Deng.ttf", L"msjh.ttc", L"simkai.ttf", L"simfang.ttf",
+        L"mingliu.ttc", L"kaiu.ttf",
+    };
+    bool cjkLoaded = false;
     for (const wchar_t* f : cjk)
     {
         if (atlas.AddFallbackFont(Utf8FromWide((fonts / f).c_str())))
+        {
+            cjkLoaded = true;
             break;
+        }
+    }
+
+    if (!cjkLoaded)
+    {
+        // Stripped-down Windows installs (Ghost/精简版/Server Core) routinely
+        // lack every face above while still shipping *some* CJK-capable font
+        // under a different name. Scan the directory: CJK faces are several MB
+        // while Latin faces are ~1MB, so size is a cheap first filter; the
+        // stb probe then confirms the face actually covers U+4E2D ("中").
+        // Bounded to a handful of candidate loads to keep startup snappy.
+        struct Candidate { std::filesystem::path path; uintmax_t size; };
+        std::vector<Candidate> candidates;
+        std::error_code ec;
+        for (std::filesystem::directory_iterator it(fonts, std::filesystem::directory_options::skip_permission_denied, ec), end;
+             it != end && !ec; it.increment(ec))
+        {
+            const std::filesystem::path& p = it->path();
+            std::error_code statEc;
+            const bool regular = it->is_regular_file(statEc);
+            const uintmax_t bytes = it->file_size(statEc);
+            if (statEc || !regular) continue;
+            const std::wstring ext = p.extension().wstring();
+            if (_wcsicmp(ext.c_str(), L".ttf") != 0 &&
+                _wcsicmp(ext.c_str(), L".ttc") != 0 &&
+                _wcsicmp(ext.c_str(), L".otf") != 0)
+                continue;
+            if (bytes < 2u * 1024u * 1024u) continue;  // CJK faces are never this small
+            candidates.push_back({p, bytes});
+        }
+        std::sort(candidates.begin(), candidates.end(),
+                  [](const Candidate& a, const Candidate& b) { return a.size > b.size; });
+
+        constexpr int kMaxProbeLoads = 8;
+        int probed = 0;
+        for (const Candidate& c : candidates)
+        {
+            if (probed >= kMaxProbeLoads) break;
+            ++probed;
+            const std::string utf8 = Utf8FromWide(c.path.c_str());
+            if (ZSlateFontAtlas::ProbeHasCodepoint(utf8, 0x4E2D) && atlas.AddFallbackFont(utf8))
+            {
+                cjkLoaded = true;
+                break;
+            }
+        }
+    }
+
+    if (!cjkLoaded)
+    {
+        // Nothing on the machine covers Han glyphs; Chinese text will paint as
+        // boxes. Keep the window alive (Latin still renders) but say so.
+        Log(ELogLevel::Warning,
+            "[ZSlate] no CJK-capable font found in '%s'; Chinese text will render as boxes",
+            Utf8FromWide(fonts.c_str()).c_str());
     }
     return true;
 }

@@ -1,12 +1,17 @@
 #include "ZSlate/Renderer/ZSlateFontAtlas.h"
 
+#include "ZSlate/Core/SlateLog.h"
+
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
 
-// ---- Warning: replanted LOG_* -> fprintf(stderr) for zero-dependency ----
-#define ZSFONT_WARN(fmt, ...) std::fprintf(stderr, "[ZSlateFontAtlas] " fmt "\n", ##__VA_ARGS__)
-#define ZSFONT_INFO(fmt, ...) std::fprintf(stdout, "[ZSlateFontAtlas] " fmt "\n", ##__VA_ARGS__)
+// Zero-dependency, but no longer hard-wired to stderr: every line goes through
+// ZSlate's process-wide sink, so a host that owns a real logging stack (the
+// engine's bqlog / 扁鹊, say) receives these too. Nothing changes for a host
+// that installs nothing -- the default sink is the same fprintf pair.
+#define ZSFONT_WARN(fmt, ...) ZSlate::Log(ZSlate::ELogLevel::Warning, "[ZSlateFontAtlas] " fmt, ##__VA_ARGS__)
+#define ZSFONT_INFO(fmt, ...) ZSlate::Log(ZSlate::ELogLevel::Info, "[ZSlateFontAtlas] " fmt, ##__VA_ARGS__)
 
 // File-local stb_truetype.
 #if defined(_MSC_VER)
@@ -255,6 +260,34 @@ const ZSlateFontAtlas::Glyph& ZSlateFontAtlas::GetGlyph(unsigned int codepoint, 
     m_Dirty = true;
     m_Glyphs.emplace(key, g);
     return m_Glyphs[key];
+}
+
+bool ZSlateFontAtlas::ProbeHasCodepoint(const std::string& ttf_path, unsigned int codepoint)
+{
+    if (ttf_path.empty()) return false;
+
+    std::FILE* fp = nullptr;
+#if defined(_WIN32)
+    fopen_s(&fp, ttf_path.c_str(), "rb");
+#else
+    fp = std::fopen(ttf_path.c_str(), "rb");
+#endif
+    if (!fp) return false;
+
+    std::fseek(fp, 0, SEEK_END);
+    const long size = std::ftell(fp);
+    std::fseek(fp, 0, SEEK_SET);
+    if (size <= 0) { std::fclose(fp); return false; }
+
+    std::vector<uint8_t> data(static_cast<size_t>(size));
+    const size_t read = std::fread(data.data(), 1, static_cast<size_t>(size), fp);
+    std::fclose(fp);
+    if (read != static_cast<size_t>(size)) return false;
+
+    stbtt_fontinfo info {};
+    const int offset = stbtt_GetFontOffsetForIndex(data.data(), 0);
+    if (offset < 0 || stbtt_InitFont(&info, data.data(), offset) == 0) return false;
+    return stbtt_FindGlyphIndex(&info, static_cast<int>(codepoint)) != 0;
 }
 
 }  // namespace ZSlate

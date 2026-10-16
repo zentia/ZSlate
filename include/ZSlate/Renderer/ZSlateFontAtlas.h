@@ -41,6 +41,12 @@ public:
     // Fallback fonts tried when the primary font lacks a codepoint (e.g. CJK).
     bool AddFallbackFont(const std::string& ttf_path);
 
+    // Cheap probe: does this font file actually contain the codepoint?
+    // Loads the file into a scratch buffer and asks stb_truetype for the glyph
+    // index; no atlas state is touched. Used by hosts that scan a fonts
+    // directory for a CJK-capable face on stripped-down systems.
+    static bool ProbeHasCodepoint(const std::string& ttf_path, unsigned int codepoint);
+
     // Bake-on-demand. pixel_size is rounded to an integer for cache keying.
     const Glyph& GetGlyph(unsigned int codepoint, float pixel_size);
 
