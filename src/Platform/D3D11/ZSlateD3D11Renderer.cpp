@@ -1,4 +1,5 @@
 #include "ZSlate/Platform/D3D11/ZSlateD3D11Renderer.h"
+#include "ZSlate/Core/SlateLog.h"
 #include "ZSlate/Renderer/ZSlateBatchedRenderer.h"
 #include "ZSlate/Renderer/ZSlateFontAtlas.h"
 
@@ -66,8 +67,10 @@ bool ZSlateD3D11Renderer::Init()
     sd.Windowed = TRUE;
 
     D3D_FEATURE_LEVEL fl{};
+    D3D_DRIVER_TYPE driverUsed = D3D_DRIVER_TYPE_UNKNOWN;
     const D3D_FEATURE_LEVEL required[] = {D3D_FEATURE_LEVEL_11_0};
     auto create = [&](D3D_DRIVER_TYPE driver) {
+        driverUsed = driver;
         return D3D11CreateDeviceAndSwapChain(
             nullptr, driver, nullptr, D3D11_CREATE_DEVICE_SINGLETHREADED,
             required, 1, D3D11_SDK_VERSION, &sd, &m_SwapChain, &m_Device, &fl, &m_Context);
@@ -81,8 +84,35 @@ bool ZSlateD3D11Renderer::Init()
     if (FAILED(deviceResult))
     {
         Shutdown();
-        std::fprintf(stderr, "[ZSlateD3D11] Hardware and WARP initialization failed: 0x%08lx\n", deviceResult);
+        ZSlate::Log(ZSlate::ELogLevel::Error, "[ZSlateD3D11] hardware and WARP init failed: 0x%08lx",
+                    static_cast<unsigned long>(deviceResult));
         return false;
+    }
+
+    // Which GPU the UI actually rendered on: when a user reports broken output,
+    // "Intel UHD 620, FL 0xb100, WARP fallback: no" in their log beats asking
+    // them to run dxdiag. Goes through the sink so a WINDOWS-subsystem host
+    // (no stderr) still records it.
+    {
+        IDXGIDevice* dxgiDevice = nullptr;
+        if (SUCCEEDED(m_Device->QueryInterface(__uuidof(IDXGIDevice), reinterpret_cast<void**>(&dxgiDevice))) && dxgiDevice)
+        {
+            IDXGIAdapter* adapter = nullptr;
+            if (SUCCEEDED(dxgiDevice->GetAdapter(&adapter)) && adapter)
+            {
+                DXGI_ADAPTER_DESC desc {};
+                if (SUCCEEDED(adapter->GetDesc(&desc)))
+                {
+                    char name[128] = {};
+                    WideCharToMultiByte(CP_UTF8, 0, desc.Description, -1, name, sizeof(name), nullptr, nullptr);
+                    ZSlate::Log(ZSlate::ELogLevel::Info, "[ZSlateD3D11] adapter '%s', feature level 0x%04x%s",
+                                name, static_cast<unsigned>(fl),
+                                driverUsed == D3D_DRIVER_TYPE_WARP ? ", WARP fallback" : "");
+                }
+                adapter->Release();
+            }
+            dxgiDevice->Release();
+        }
     }
 
     ID3D11Texture2D* bb = nullptr;
@@ -119,7 +149,7 @@ bool ZSlateD3D11Renderer::Init()
     m_Device->CreateSamplerState(&samp, &m_Sampler);
 
     CreateWhiteTexture();
-    std::printf("[ZSlateD3D11] Init OK (%ux%u)\n", m_Width, m_Height);
+    ZSlate::Log(ZSlate::ELogLevel::Info, "[ZSlateD3D11] init ok (%ux%u)", m_Width, m_Height);
     return true;
     #endif
 }
@@ -204,21 +234,83 @@ void ZSlateD3D11Renderer::UploadFontAtlas(ZSlateFontAtlas& atlas)
         D3D11_TEXTURE2D_DESC td {};
         td.Width = aw; td.Height = ah; td.MipLevels = 1; td.ArraySize = 1;
         td.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-        td.SampleDesc.Count = 1; td.Usage = D3D11_USAGE_DYNAMIC;
+        td.SampleDesc.Count = 1; td.Usage = D3D11_USAGE_DEFAULT;
         td.BindFlags = D3D11_BIND_SHADER_RESOURCE;
-        td.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
         m_Device->CreateTexture2D(&td, nullptr, &m_FontTex);
         m_Device->CreateShaderResourceView(m_FontTex, nullptr, &m_FontSRV);
     }
 
-    D3D11_MAPPED_SUBRESOURCE m {};
-    m_Context->Map(m_FontTex, 0, D3D11_MAP_WRITE_DISCARD, 0, &m);
-    const uint8_t* src = atlas.GetPixels();
-    for (uint32_t row = 0; row < ah; ++row)
-        std::memcpy((uint8_t*)m.pData + row * m.RowPitch, src + row * aw * 4, aw * 4);
-    m_Context->Unmap(m_FontTex, 0);
+    // DEFAULT + UpdateSubresource instead of DYNAMIC + Map/WRITE_DISCARD.
+    // UpdateSubresource is the one CPU-to-GPU path every driver implements
+    // identically -- pitch is passed explicitly and the runtime stages
+    // internally -- whereas DYNAMIC Map hands back a driver-chosen pitch and
+    // was the prime suspect for a user report where every glyph sampled
+    // garbage while positions and UVs were provably correct.
+    m_Context->UpdateSubresource(m_FontTex, 0, nullptr, atlas.GetPixels(),
+                                 aw * 4u, 0u);
     atlas.ClearDirty();
+
+    if (!m_AtlasVerified)
+    {
+        m_AtlasVerified = true;
+        VerifyAtlasOnGPU(atlas);
+    }
     #endif
+}
+
+// One-shot GPU readback: copy the uploaded atlas back through a staging
+// texture and compare it against the CPU buffer. On a machine we cannot
+// reproduce on, this is what separates "the upload is corrupt" (driver /
+// upload path) from "the sampling is corrupt" (our UVs or vertex data): the
+// verdict is computed on the user's GPU and lands in their log. Costs one
+// 16 MB GPU->CPU copy once per process.
+void ZSlateD3D11Renderer::VerifyAtlasOnGPU(ZSlateFontAtlas& atlas)
+{
+    if (!m_FontTex) return;
+    D3D11_TEXTURE2D_DESC td {};
+    td.Width = atlas.GetWidth(); td.Height = atlas.GetHeight();
+    td.MipLevels = 1; td.ArraySize = 1; td.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    td.SampleDesc.Count = 1;
+    td.Usage = D3D11_USAGE_STAGING;
+    td.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+    ID3D11Texture2D* staging = nullptr;
+    if (FAILED(m_Device->CreateTexture2D(&td, nullptr, &staging)) || !staging)
+    {
+        ZSlate::Log(ZSlate::ELogLevel::Warning, "[ZSlateD3D11] atlas self-check: cannot create staging texture");
+        return;
+    }
+    m_Context->CopyResource(staging, m_FontTex);
+    D3D11_MAPPED_SUBRESOURCE m {};
+    const HRESULT hr = m_Context->Map(staging, 0, D3D11_MAP_READ, 0, &m);
+    if (FAILED(hr))
+    {
+        ZSlate::Log(ZSlate::ELogLevel::Warning, "[ZSlateD3D11] atlas self-check: Map failed 0x%08lx",
+                    static_cast<unsigned long>(hr));
+        staging->Release();
+        return;
+    }
+    const uint8_t* src = atlas.GetPixels();
+    const size_t row_bytes = static_cast<size_t>(atlas.GetWidth()) * 4u;
+    uint32_t bad_rows = 0;
+    for (uint32_t row = 0; row < atlas.GetHeight(); ++row)
+    {
+        const uint8_t* gpu = static_cast<const uint8_t*>(m.pData) + static_cast<size_t>(row) * m.RowPitch;
+        if (std::memcmp(gpu, src + static_cast<size_t>(row) * row_bytes, row_bytes) != 0)
+        {
+            if (bad_rows < 8)
+                ZSlate::Log(ZSlate::ELogLevel::Error,
+                            "[ZSlateD3D11] atlas self-check: row %u differs (GPU copy is corrupt)", row);
+            ++bad_rows;
+        }
+    }
+    m_Context->Unmap(staging, 0);
+    staging->Release();
+    if (bad_rows == 0)
+        ZSlate::Log(ZSlate::ELogLevel::Info, "[ZSlateD3D11] atlas self-check: OK, all %u rows match the CPU atlas",
+                    atlas.GetHeight());
+    else
+        ZSlate::Log(ZSlate::ELogLevel::Error, "[ZSlateD3D11] atlas self-check: %u/%u rows differ",
+                    bad_rows, atlas.GetHeight());
 }
 
 // ---- Render -----------------------------------------------------------------

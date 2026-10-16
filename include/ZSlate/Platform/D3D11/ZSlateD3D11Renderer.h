@@ -57,6 +57,7 @@ public:
 private:
     void CreateWhiteTexture();
     void UploadFontAtlas(ZSlateFontAtlas& atlas);
+    void VerifyAtlasOnGPU(ZSlateFontAtlas& atlas);
     bool CompileShaders();
 
     HWND m_Hwnd;
@@ -83,6 +84,7 @@ private:
     // Font atlas texture
     ID3D11Texture2D*          m_FontTex = nullptr;
     ID3D11ShaderResourceView* m_FontSRV = nullptr;
+    bool m_AtlasVerified = false;  // one-shot GPU readback self-check
 
     uint32_t m_Width  = 0;
     uint32_t m_Height = 0;
