@@ -19,7 +19,9 @@ A lightweight, retained-mode UI framework for C++20 applications.
 
 ```
 ZSlate/
-├── Core/            # Types (Vector2, UIRect, UIColor), geometry, enums
+├── Core/            # Types (Vector2, UIRect, UIColor), geometry, enums,
+│                    # SlateLog (diagnostics sink),
+│                    # SlateLocalization (language switch + string lookup)
 ├── Application/     # SlateApplication, SlateInputRouter (mouse/keyboard)
 ├── Renderer/        # ZSlateBatchedRenderer (CPU batch recorder),
 │                    # ZSlateFontAtlas (TTF→atlas), ZSlateTextGenerator (layout)
@@ -351,6 +353,33 @@ atlas.AddFallbackFont("C:\\Windows\\Fonts\\msyh.ttc");    // CJK fallback
 renderer.SetFontAtlas(&atlas);  // attach to batch renderer
 // Font atlas auto-uploads to GPU via ZSlateD3D11Renderer::UploadFontAtlas()
 ```
+
+## Localization (ZSlate/Core/SlateLocalization.h)
+
+ZSlate owns the **mechanism**, not the translations. English is the text written
+in the source; every other language is a table the host registers. A tool that
+wants a Chinese UI therefore writes English and ships a table -- it does not
+fork its strings.
+
+```cpp
+#include "ZSlate/Core/SlateLocalization.h"
+
+// 1. Write strings in English, tagged with a stable id.
+label->SetText(ZSlate::Loc("shell.tab.collection", "Collection"));
+
+// 2. Register translations once, before building the widget tree.
+const ZSlate::FLocalizationEntry zh[] = {{"shell.tab.collection", "环境采集"}};
+ZSlate::RegisterStrings(ZSlate::ELanguage::ChineseSimplified, zh, std::size(zh));
+
+// 3. Switch at run time and remember the choice however the host likes.
+ZSlate::SetLanguage(ZSlate::ELanguage::ChineseSimplified);
+SaveSetting("lang", ZSlate::LanguageId(ZSlate::GetLanguage()));   // "zh-CN"
+```
+
+An id with no entry falls back to the English literal (and reports the miss once
+through `ZSlate::Log`), so a half-translated build degrades instead of showing
+blank labels. Strings are resolved when a widget is **built**, so switching
+language means rebuilding the tree, not repainting.
 
 ## Platform Implementations
 
