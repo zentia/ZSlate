@@ -212,7 +212,20 @@ const ZSlateFontAtlas::Glyph& ZSlateFontAtlas::GetGlyph(unsigned int codepoint, 
             }
         }
     }
-    if (!bake_info) { m_Glyphs.emplace(key, m_Invalid); return m_Invalid; }
+    if (!bake_info)
+    {
+        // Silent here used to make "the font loaded fine but text is still
+        // boxes" undiagnosable from a user's log: nothing was ever recorded.
+        if (m_MissingCodepoints.insert(codepoint).second)
+        {
+            if (m_MissingCodepoints.size() <= 16)
+                ZSFONT_WARN("no font covers U+%04X (size %d)", codepoint, rounded);
+            else if (m_MissingCodepoints.size() == 17)
+                ZSFONT_WARN("further missing-codepoint warnings suppressed");
+        }
+        m_Glyphs.emplace(key, m_Invalid);
+        return m_Invalid;
+    }
 
     const float scale = stbtt_ScaleForPixelHeight(bake_info, static_cast<float>(rounded));
     int adv_units = 0, lb = 0;

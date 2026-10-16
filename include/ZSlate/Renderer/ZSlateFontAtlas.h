@@ -10,6 +10,7 @@
 #include <cstdint>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 namespace ZSlate
@@ -65,6 +66,10 @@ private:
 
     bool m_Loaded {false};
     bool m_AtlasFullWarned {false};
+
+    // Codepoints no font (primary or fallback) could cover. Warned once each,
+    // bounded -- a mojibake stream can produce many distinct bogus codepoints.
+    std::unordered_set<unsigned int> m_MissingCodepoints;
 
     std::vector<uint8_t> m_FontData;
     void* m_FontInfo {nullptr};    // stbtt_fontinfo* (opaque)
